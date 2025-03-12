@@ -85,6 +85,76 @@ PAPI unterstützt deine Prüfungsvorbereitung durch:
 - **Fallbeispiele mit Musterlösungen**: Zum Lernen typischer Prüfungssituationen
 - **Zusammenfassungen**: Aktuelle Leitlinien und Forschungsergebnisse kompakt aufbereitet
 
+## Literatur
+
+PAPI basiert auf aktueller Fachliteratur, die für die Approbationsprüfung relevant ist:
+
+### Allgemeine Standardwerke
+
+- **"Die Psychotherapie-Prüfung" (Rettenbach & Christ)**
+  - Bewährtes Standardwerk zur Orientierung im "Prüfungs-Dschungel"
+  - Deckt alle Inhalte des offiziellen IMPP-Gegenstandskatalogs ab
+  - In der 4. Auflage vollständig aktualisiert
+
+- **"Das Repetitorium"**
+  - 4. erweiterte und überarbeitete Auflage (2022)
+  - Spezielle Kapitel mit Tipps für die mündliche Prüfung
+  - Neue ausführliche Kapitel zur Systemischen Therapie und Gesprächspsychotherapie
+  - Orientiert sich genau an den Gegenstandskatalogen des IMPP
+
+### Verfahrensspezifische Literatur
+
+#### Tiefenpsychologie
+
+- **"Analytische und tiefenpsychologisch fundierte Psychotherapie" (Elzer et al., 2019)**
+  - Umfassendes Werk, das als neues Standardwerk gilt
+  - Deckt Theorie, Störungsbilder und praktische Aspekte wie das Gutachterverfahren ab
+
+- **"Psychodynamisch denken – tiefenpsychologisch handeln" (Rudolf)**
+  - Kompaktes Werk mit dem Extrakt der Rudolfschen Expertise zur TP
+  - Besonders empfohlen für die Prüfungsvorbereitung
+
+- **"Praxis der psychodynamischen Psychotherapie" (Boll-Klatt/Kohrs)**
+  - "Must-have" Klassiker für Tiefenpsychologie
+
+- **"Tiefenpsychologisch fundierte Psychotherapie" (Wöller & Kruse)**
+  - Zentrales Standardwerk für TP (auch bekannt als der "Wöller/Kruse")
+  - Liegt in der 5. aktualisierten Auflage vor
+  - Vereint Grundlagen und Entwicklungen der TP mit konkreten Praxisvorschlägen
+
+#### Verhaltenstherapie
+
+- **"Verhaltenstherapiemanual"**
+  - Empfehlenswerte Grundlagenliteratur für VT
+
+- **"Kognitive Therapie der Depression" (Aaron T. Beck)**
+  - Weltweit anerkannter und bewährter Ansatz
+  - Umfassendes Standardwerk der Depressionstherapie
+
+- **"Persönlichkeitsstörungen verstehen" (Rainer Sachse)**
+  - Fokussiert auf den Umgang mit schwierigen Klienten
+  - Erklärt Persönlichkeitsstörungen als Beziehungsstörungen
+  - Von einem Vertreter der "Klärungsorientierten Psychotherapie"
+
+- **"Dialektisch-Behaviorale Therapie (DBT)" (Marsha Linehan)**
+  - Entwickelt zur Behandlung von Borderline-Persönlichkeitsstörung
+  - In S3-Leitlinien als "die Methode mit den meisten Wirksamkeitsnachweisen" geführt
+  - Basiert auf kognitiver Verhaltenstherapie mit speziellen Modifikationen
+
+### Spezifisch für die mündliche Prüfung
+
+- **"50 Fälle Psychiatrie und Psychotherapie" (Lieb, Heßlinger & Jacob)**
+  - Typische Fallgeschichten aus der Praxis
+  - Ideal zur Vorbereitung auf die fallbezogene Prüfung
+
+- **"Psychiatrie in Frage und Antwort" (Frieboes, Spring & Volz)**
+  - Realistische Formulierungen von Prüfungsfragen mit ausführlichen Kommentaren
+  - Hilfreiche Simulationen der mündlichen Prüfungssituation
+
+- **"Heilpraktiker für Psychotherapie – Mündliche Prüfung" (Rudolf Schneider)**
+  - 400 Fallgeschichten und 53 Prüfungsprotokolle
+  - Jede Fallgeschichte wird nach typischen Symptomen analysiert und nach ICD-10 klassifiziert
+
 ## Installation und Nutzung
 
 [Hier folgen Installationsanweisungen und Nutzungshinweise]
