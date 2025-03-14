@@ -5,9 +5,17 @@ from datetime import datetime
 # User schemas
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str
-    last_name: str
-
+    first_name: str = Field(
+        min_length=2,
+        max_length=50,
+        description="First name must be between 2 and 50 characters"
+    )
+    last_name: str = Field(
+        min_length=2,
+        max_length=50,
+        description="Last name must be between 2 and 50 characters"
+    )
+    
 class UserCreate(UserBase):
     password: str = Field(
         min_length=8, 

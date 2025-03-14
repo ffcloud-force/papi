@@ -5,16 +5,9 @@ from backend.database.config import get_db
 from backend.api.schemas import UserCreate, UserUpdate, UserResponse
 from argon2 import PasswordHasher
 import uuid
-router = APIRouter()
+from backend.api.routers.utils import hash_password
 
-#argon2 hasher
-ph = PasswordHasher(
-    time_cost=3,
-    memory_cost=100000,
-    parallelism=4,
-    hash_len=32,
-    salt_len=20,
-)
+router = APIRouter()
 
 @router.get("/{user_id}")
 async def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -30,7 +23,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="User already exists")
     
     #hash the password with the salt
-    hashed_password = ph.hash(user.password)
+    hashed_password = hash_password(user.password)
 
     new_user = User(
         id=str(uuid.uuid4()),
