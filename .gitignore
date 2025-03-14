@@ -1,0 +1,11 @@
+.env
+.cursor
+
+.pycache
+.pytest_cache
+
+__pycache__
+
+.DS_Store
+ 
+backend/data/example_cases
