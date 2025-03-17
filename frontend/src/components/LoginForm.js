@@ -3,6 +3,7 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './LoginForm.css';
 
 // Validation schema
@@ -17,19 +18,17 @@ const LoginSchema = Yup.object().shape({
 const LoginForm = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       // Convert to form data format for OAuth2 compatibility
       const formData = new FormData();
-      formData.append('username', values.email);  // OAuth2 uses 'username'
+      formData.append('username', values.email);
       formData.append('password', values.password);
 
       // Make API call to your FastAPI backend
       const response = await axios.post('http://localhost:8000/auth/token', formData);
-      
-      // Store token in localStorage
-      localStorage.setItem('token', response.data.access_token);
       
       // Fetch user info
       const userResponse = await axios.get('http://localhost:8000/auth/me', {
@@ -38,10 +37,10 @@ const LoginForm = () => {
         }
       });
       
-      // Store user info in localStorage
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
+      // Use the login function from auth context
+      login(userResponse.data, response.data.access_token);
       
-      // Redirect to dashboard or home page
+      // Redirect to dashboard
       navigate('/dashboard');
     } catch (error) {
       let errorMessage = 'Login failed. Please check your credentials.';

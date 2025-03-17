@@ -5,4 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "papi"
 version = "0.1.0"
-description = "PAPI" 
+description = "PAPI"
+# Add other project metadata as needed
+dependencies = [
+    "redis",
+    "pydantic",
+    # Add other dependencies as needed
+]
+
+[tool.setuptools]
+packages = ["backend", "backend.modules", "backend.database", "backend.database.cache"]
+# Or use find directive to automatically find all backend packages
+# packages = {find = {where = ["backend"], include = ["backend*"]}} 

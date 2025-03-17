@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 import secrets
-from backend.database.config import get_db
-from backend.database.models import User
+from backend.database.persistent.config import get_db
+from backend.database.persistent.models import User
 from argon2.exceptions import VerifyMismatchError
 from backend.api.routers.utils import verify_password
 
@@ -27,7 +27,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # Find user by email
     user = db.query(User).filter(User.email == form_data.username).first()
     
@@ -60,7 +60,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Dependency to get current user from token
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -82,7 +82,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 @router.get("/me")
-async def read_users_me(current_user: User = Depends(get_current_user)):
+def read_users_me(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,

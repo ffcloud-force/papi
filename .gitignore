@@ -9,3 +9,12 @@ __pycache__
 .DS_Store
  
 backend/data/example_cases
+
+*.db
+
+*.egg-info
+
+*.log
+
+*.log.*
+

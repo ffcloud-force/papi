@@ -8,7 +8,7 @@ from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, JSON
 
-from backend.database.config import Base
+from backend.database.persistent.config import Base
 
 # For SQLite compatibility with JSON
 class JSONType(TypeDecorator):
