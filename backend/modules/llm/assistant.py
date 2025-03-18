@@ -1,9 +1,6 @@
-import asyncio
-from langchain_core.prompts import ChatPromptTemplate
-from backend.modules.llm.prompts.exam_prompts import get_chat_system_prompt_einzelpruefung
+from PyPDF2 import PdfReader
 from backend.modules.llm.providers.openai_singleton import get_openai_client
-import PyPDF2
-
+from backend.modules.llm.prompts.exam_prompts import get_case_question_prompt, get_case_question_prompt_tp, get_examiner_prompt
 """
 llm chat assistant
 
@@ -16,41 +13,33 @@ Process:
 """
 
 ### process case document from pdf file in /backend/data/example_cases/case1.pdf
-def process_case_document():
-    with open("backend/data/example_cases/case1.pdf", "rb") as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
-
-    return text
+def process_case_document(file_path="backend/data/example_cases/case1.pdf"):
+    with open(file_path, "rb") as file:
+        pdf_reader = PdfReader(file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        return text
 
 class Assistant:
     def __init__(self):
         # Initialize LLM using the singleton
         self.llm = get_openai_client()
-        
-        # Create system prompt
-        self.system_prompt = get_chat_system_prompt_einzelpruefung()
-        
-        # Create the prompt template (without history)
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.system_prompt),
-            ("human", "{input}")
-        ])
-        
-        # Create the conversation chain
-        self.conversation = self.prompt | self.llm
     
-    def get_completion(self, message):
+    def _get_completion(self, message):
         """Get a completion from the LLM (synchronous)"""
         return self.llm.invoke(message).content
+
+    def process_case_document(self, general_type, specific_type, url_path):
+        case_text = process_case_document(url_path)
+        prompt = get_examiner_prompt()
+        prompt += get_case_question_prompt_tp(general_type, specific_type)
+        prompt += "Nachfolgend bekommst du den Falltext. Erstelle Fragen zu diesem Fall, welche das Thema betreffen: "
+        prompt += "\n\n" + case_text
+        print(prompt)
+        questions = self._get_completion(prompt)
+        return questions
     
-    def process_document(self, document):
-        """Handle a user provided case document"""
-        import pdb;pdb.set_trace()
-        text = process_case_document(document)
-        
 if __name__ == "__main__":
     assistant = Assistant()
-    assistant.process_document(process_case_document())
+    print(assistant.process_case_document("relationships", "core_conflictual_relationship_theme", "backend/data/example_cases/case1.pdf"))
