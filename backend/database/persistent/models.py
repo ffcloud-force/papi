@@ -7,6 +7,8 @@ from datetime import datetime
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, JSON
+from typing import Optional, List
+from pydantic import BaseModel, Field
 
 from backend.database.persistent.config import Base
 
@@ -59,3 +61,26 @@ class Document(Base):
     # Relationship to user
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
     owner = relationship("User", back_populates="documents") 
+
+
+# Exam question model
+class ExamQuestion(BaseModel):
+    question: str
+    context: Optional[str] = None
+    difficulty: str = Field(..., pattern="^(leicht|mittel|schwer)$")
+    keywords: List[str]
+    general_type: str
+    specific_type: Optional[str] = None
+    
+    # If needed, add SQLAlchemy model configuration
+    class Config:
+        orm_mode = True
+
+class QuestionSet(BaseModel):
+    id: Optional[int] = None
+    case_id: int  # Reference to case document
+    questions: List[ExamQuestion]
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        orm_mode = True 
