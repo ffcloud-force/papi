@@ -18,3 +18,4 @@ backend/data/example_cases
 
 *.log.*
 
+*.db
