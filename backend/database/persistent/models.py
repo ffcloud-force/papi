@@ -4,11 +4,12 @@ Basic database models for users and documents
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, JSON
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.declarative import declarative_base
 
 from backend.database.persistent.config import Base
 
@@ -41,14 +42,14 @@ class User(Base):
     registration_date = Column(DateTime, default=datetime.now)
     last_login_date = Column(DateTime, default=datetime.now)
     
-    # Relationship to documents
-    documents = relationship("Document", back_populates="owner", cascade="all, delete-orphan")
+    # Relationship to cases
+    cases = relationship("Case", back_populates="owner", cascade="all, delete-orphan")
 
-# Document model
-class Document(Base):
-    __tablename__ = "documents"
+# Case model
+class Case(Base):
+    __tablename__ = "cases"
     
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, index=True)
     filename = Column(String, nullable=False) # original filename
     storage_path = Column(String, nullable=False) # path to the document in the cloud storage
     upload_date = Column(DateTime, default=datetime.now)
@@ -56,31 +57,46 @@ class Document(Base):
     file_size = Column(Integer) # size of the file in bytes
     status = Column(String) # status of the document (uploaded, processed, etc.)
     case_number = Column(Integer)  # 1 or 2
-    document_metadata = Column(JSON) # metadata of the document
+    case_metadata = Column(JSON) # metadata of the document
+    content_text = Column(Text) # extracted text content of the document
     
     # Relationship to user
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
-    owner = relationship("User", back_populates="documents") 
+    owner = relationship("User", back_populates="cases") 
 
 
 # Exam question model
-class ExamQuestion(BaseModel):
-    question: str
-    context: Optional[str] = None
-    difficulty: str = Field(..., pattern="^(leicht|mittel|schwer)$")
-    keywords: List[str]
-    general_type: str
-    specific_type: Optional[str] = None
+class ExamQuestion(Base):
+    __tablename__ = "exam_questions"
     
-    # If needed, add SQLAlchemy model configuration
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    question = Column(Text, nullable=False)
+    context = Column(Text, nullable=True)
+    difficulty = Column(String(10), nullable=False)
+    keywords = Column(Text, nullable=False)  # Store as JSON string
+    general_type = Column(String(50), nullable=False)
+    specific_type = Column(String(50), nullable=True)
+    question_set_id = Column(Integer, ForeignKey("question_sets.id"))
+    
+    # Relationship to question set
+    question_set = relationship("QuestionSet", back_populates="questions")
+    
+    # Pydantic model for data validation
     class Config:
         orm_mode = True
 
-class QuestionSet(BaseModel):
-    id: Optional[int] = None
-    case_id: int  # Reference to case document
-    questions: List[ExamQuestion]
-    created_at: Optional[datetime] = None
+# Question set model
+class QuestionSet(Base):
+    __tablename__ = "question_sets"
     
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False)  # Foreign key to users table
+    case_id = Column(Integer, nullable=False)  # Foreign key to cases table
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # Relationship to questions
+    questions = relationship("ExamQuestion", back_populates="question_set")
+    
+    # Pydantic model for data validation
     class Config:
-        orm_mode = True 
+        orm_mode = True

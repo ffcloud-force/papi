@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.routers import users, documents, auth, chat
+from backend.api.routers import cases, users, auth, chat
 
 app = FastAPI(title="PAPI API")
 

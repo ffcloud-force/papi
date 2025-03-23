@@ -271,7 +271,7 @@ EXAM_PROMPTS = {
     "output_format": (
         "Gib deine Antwort als JSON-Array zurück. Jede Frage sollte ein separates JSON-Objekt sein mit folgender Struktur: "
         "{ "
-        # "  'topic': 'Themenbereich (z.B. diagnostic, model, therapy_process, etc.)', "
+        # "  'topic': 'Themenbereich (z.B. diagnostic, model, therapy_process, etc.)', " // Wird im nachhinein hinzugefügt
         "  'question': 'Die vollständige Fragestellung', "
         "  'context': 'Optionaler Kontext oder Hintergrundinfo zur Frage', "
         "  'difficulty': 'Einschätzung des Schwierigkeitsgrads (leicht, mittel, schwer)', "
@@ -308,3 +308,7 @@ def get_simple_prompt_ids():
 def get_complex_prompt_ids():
     """Get IDs of all complex prompts"""
     return [pt["id"] for pt in EXAM_PROMPTS["prompt_types"] if pt["type"] == "complex"]
+
+def get_prompt_by_specialization(specialization):
+    """Get all prompts by specialization"""
+    return [pt for pt in EXAM_PROMPTS["prompt_types"] if pt["specialization"] == specialization]
