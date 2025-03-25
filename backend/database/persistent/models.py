@@ -10,6 +10,7 @@ from sqlalchemy.types import TypeDecorator, JSON
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.declarative import declarative_base
+import json
 
 from backend.database.persistent.config import Base
 
@@ -73,10 +74,24 @@ class ExamQuestion(Base):
     question = Column(Text, nullable=False)
     context = Column(Text, nullable=True)
     difficulty = Column(String(10), nullable=False)
-    keywords = Column(Text, nullable=False)  # Store as JSON string
+    _keywords = Column("keywords", Text, nullable=False)  # Actual DB column
     general_type = Column(String(50), nullable=False)
     specific_type = Column(String(50), nullable=True)
     question_set_id = Column(Integer, ForeignKey("question_sets.id"))
+    answer = Column(Text, nullable=True)
+    
+    @property
+    def keywords(self):
+        # Convert from DB string back to list
+        return json.loads(self._keywords) if self._keywords else []
+        
+    @keywords.setter
+    def keywords(self, value):
+        # Convert list to string for DB
+        if isinstance(value, list):
+            self._keywords = json.dumps(value)
+        else:
+            self._keywords = value
     
     # Relationship to question set
     question_set = relationship("QuestionSet", back_populates="questions")
@@ -90,8 +105,9 @@ class QuestionSet(Base):
     __tablename__ = "question_sets"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=False)  # Foreign key to users table
-    case_id = Column(Integer, nullable=False)  # Foreign key to cases table
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    case_id = Column(String, ForeignKey("cases.id"), nullable=False)
+    topic = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     
     # Relationship to questions

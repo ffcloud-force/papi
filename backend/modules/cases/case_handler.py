@@ -5,14 +5,11 @@ from backend.api.schemas.case import CaseCreate
 from pydantic import ValidationError
 import hashlib
 import boto3
-"""
-case handler
 
-Process:
-1. User uploads case file
-2. Case file is processed and stored in the database
-3. A user can only upload 2 cases
-4. If a user has already uploaded 2 cases, 
+"""
+This module is responsible for handling the case data.
+It is responsible for uploading the case to S3 and the database.
+It is also responsible for deleting the case from S3 and the database.
 """
 
 class CaseHandler:
@@ -26,6 +23,7 @@ class CaseHandler:
         unique_string = f"{user_id}_{case_text}"
         return hashlib.sha256(unique_string.encode()).hexdigest()
 
+    ## S3 operations ##
     def _upload_case_to_s3(self, file_data, user_id):
         """
         Upload file data to S3
@@ -71,6 +69,16 @@ class CaseHandler:
             else:
                 raise
 
+    def _get_case_by_id_from_s3(self, user_id, case_id):
+        """
+        Get a case by id from S3
+        """
+        s3 = boto3.client('s3')
+        s3_key = f"cases/users/{user_id}/{case_id}"
+        s3.get_object(Bucket='cf-papi', Key=s3_key)
+        return s3_key
+
+    ## DB operations ##
     def _add_case_to_db(self, file_path, user_id, s3_key, case_content, case_number=1):
         """
         Add case to database with extracted text content and validation
@@ -130,11 +138,9 @@ class CaseHandler:
             self.db.delete(case)
             self.db.commit()
 
+    def _get_case_by_id(self, case_id):
+        """
+        Get a case by id
+        """
+        return self.db.query(Case).filter(Case.id == case_id).first()
 
-if __name__ == "__main__":
-    case_handler = CaseHandler()
-    file_path = "backend/data/example_cases/case1.pdf"
-    file_data = open(file_path, "rb").read()
-    converter = FileConverter()
-    case_content = converter.convert_pdf_to_text(file_path)
-    case_handler.upload_case_to_s3_and_db(file_path, 1, case_content, 1)

@@ -1,25 +1,27 @@
-import json
-from backend.modules.llm.assistant import LLM_Assistant
-from backend.database.persistent.models import Case
-from backend.database.persistent.config import get_db
-
+from backend.services.llm_service import LLMService
+import time
 def main():
-    """Test function to generate all questions for a case"""
-    case_file = "backend/data/example_cases/case1.pdf"
-    # add case file to database
-    import pdb; pdb.set_trace()
-    db = next(get_db())
-    case = Case(
-        filename=case_file,
-        storage_path=case_file,
-        case_metadata={"case_number": 1},
-        status="uploaded"
-    )
-    db.add(case)
-    db.commit()
-    assistant = LLM_Assistant()
-    assistant.load_case_document(case_file)
-    return assistant.generate_and_store_questions(case_id=1, user_id=1)
+    # Start timing
+    start_time = time.time()
+
+    llm_service = LLMService()
+    
+    # Load case document
+    llm_service.load_case_document_from_file("backend/data/example_cases/case1.pdf")
+    
+    # Generate all questions
+    questions = llm_service.generate_all_questions_and_answers()
+    
+    # Calculate and print elapsed time
+    elapsed_time = time.time() - start_time
+    print(f"Completed in {elapsed_time:.2f} seconds")
+
+    # Print summary of results
+    question_count = sum(len(questions) for questions in questions.values())
+    print(f"Generated {question_count} questions across {len(questions)} topics")
+
+    # Store in database
+    llm_service.store_questions(questions, 1, 1)
 
 if __name__ == "__main__":
     main()

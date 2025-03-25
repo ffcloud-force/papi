@@ -12,7 +12,21 @@ EXAM_PROMPTS = {
         "- So formuliert sein, wie sie von einem Prüfungsausschussmitglied tatsächlich gestellt werden könnten "
         "- Verschiedene Komplexitätsebenen abdecken (von grundlegenden Fragen bis zu anspruchsvollen Fallkonzeptualisierungen) "
         "Orientiere dich an tatsächlichen Prüfungssituationen, in denen der Kandidat seinen Fall darstellt und von zwei Prüfern dazu befragt wird."
-        "Bitte formuliere nun 2 - 5 Fragen zu dem Fall, nehme dabei folgendes Themengebiet in den Fokus: "
+        "Bitte formuliere nun 3 Fragen zu dem Fall (eine leicht, eine mittel und eine schwer), nehme dabei folgendes Themengebiet in den Fokus: "
+    ),
+    "examiner_prompt_answer": (
+        "Du bist ein erfahrener Prüfer für die mündliche Psychotherapie-Approbationsprüfung in Deutschland. "
+        "Deine Aufgabe ist es, eine Antwort auf eine Prüfungsfrage zu einem psychotherapeutischen Fallbericht zu erstellen. "
+        "Diese Prüfungsfragen sollen: "
+        "- Die Theorie und praktische Anwendung psychotherapeutischer Konzepte prüfen "
+        "- Den typischen Stil und Schwierigkeitsgrad einer realen Approbationsprüfung widerspiegeln "
+        "- Sowohl Faktenwissen als auch klinisches Urteilsvermögen und Reflexionsfähigkeit abfragen "
+        "- Einen fachlichen Dialog zwischen Prüfer und Kandidat ermöglichen, der die klinische Kompetenz des Kandidaten zeigt "
+        "- Die Begründung diagnostischer und therapeutischer Entscheidungen erfragen "
+        "- So formuliert sein, wie sie von einem Prüfungsausschussmitglied tatsächlich gestellt werden könnten "
+        "- Verschiedene Komplexitätsebenen abdecken (von grundlegenden Fragen bis zu anspruchsvollen Fallkonzeptualisierungen) "
+        "Orientiere dich an tatsächlichen Prüfungssituationen, in denen der Kandidat seinen Fall darstellt und von zwei Prüfern dazu befragt wird."
+        "Bitte formuliere nun eine Antwort auf die oben genannte Frage: "
     ),
     
     "prompt_types": [
@@ -268,7 +282,7 @@ EXAM_PROMPTS = {
         }
     ],
     
-    "output_format": (
+    "output_format_questions": (
         "Gib deine Antwort als JSON-Array zurück. Jede Frage sollte ein separates JSON-Objekt sein mit folgender Struktur: "
         "{ "
         # "  'topic': 'Themenbereich (z.B. diagnostic, model, therapy_process, etc.)', " // Wird im nachhinein hinzugefügt
@@ -278,6 +292,9 @@ EXAM_PROMPTS = {
         "  'keywords': ['Schlüsselwort1', 'Schlüsselwort2', ...] "
         "} "
         "Formatiere das JSON korrekt, damit es direkt maschinell verarbeitet werden kann."
+    ),
+    "output_format_answers": (
+        "Gib deine Antwort als einfachen Text zurück. "
     )
 }
 
@@ -286,9 +303,17 @@ def get_examiner_prompt():
     """Get the system prompt"""
     return EXAM_PROMPTS["examiner_prompt"]
 
-def get_output_format():
-    """Get the output format"""
-    return EXAM_PROMPTS["output_format"]
+def get_examiner_prompt_answer():
+    """Get the system prompt for answer generation"""
+    return EXAM_PROMPTS["examiner_prompt_answer"]
+
+def get_output_format_questions():
+    """Get the output format for questions"""
+    return EXAM_PROMPTS["output_format_questions"]
+
+def get_output_format_answers():
+    """Get the output format for answers"""
+    return EXAM_PROMPTS["output_format_answers"]
 
 def get_prompt_by_id(prompt_id):
     """Get a prompt by its ID"""
