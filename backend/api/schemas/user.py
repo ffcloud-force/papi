@@ -5,24 +5,11 @@ from datetime import datetime
 # User schemas
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str = Field(
-        min_length=2,
-        max_length=50,
-        description="First name must be between 2 and 50 characters"
-    )
-    last_name: str = Field(
-        min_length=2,
-        max_length=50,
-        description="Last name must be between 2 and 50 characters"
-    )
-    
+    first_name: str
+    last_name: str
+
 class UserCreate(UserBase):
-    password: str = Field(
-        min_length=8, 
-        max_length=20, 
-        description=
-        "Password must be between 8 and 20 characters, contain at least one uppercase letter, one lowercase letter, and one number"
-    )
+    password: str
 
 class UserResponse(UserBase):
     id: str
