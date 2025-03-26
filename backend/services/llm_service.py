@@ -25,7 +25,6 @@ class LLMService:
     
 
     #PUBLIC METHODS
-
     def load_case_document_from_file(self, file_path):
         """Load case document from file path"""
         with open(file_path, "rb") as file:

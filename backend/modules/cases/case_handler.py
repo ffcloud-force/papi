@@ -16,6 +16,7 @@ class CaseHandler:
     def __init__(self):
         self.db = next(get_db())
 
+    # PRIVATE METHODS #
     def _generate_case_id(self, user_id: int, case_text: str):
         """
         Generate a new case id
@@ -79,17 +80,17 @@ class CaseHandler:
         return s3_key
 
     ## DB operations ##
-    def _add_case_to_db(self, file_path, user_id, s3_key, case_content, case_number=1):
+    def _add_case_to_db(self, filename, user_id, s3_key, case_content, case_number=1):
         """
         Add case to database with extracted text content and validation
         """
         # Determine file type from extension
-        file_type = file_path.split('.')[-1].lower() if '.' in file_path else None
+        file_type = filename.split('.')[-1].lower() if '.' in filename else None
         
         try:
             # Create and validate with Pydantic
             case_model = CaseCreate(
-                filename=file_path,
+                filename=filename,
                 file_type=file_type,
                 file_size=len(case_content),
                 case_content=case_content,
@@ -98,7 +99,7 @@ class CaseHandler:
             )
             
             # Generate ID after validation
-            case_id = self._generate_case_id(user_id, file_path)
+            case_id = self._generate_case_id(user_id, case_content)
             
             # Create SQLAlchemy model instance
             case = Case(
@@ -138,9 +139,18 @@ class CaseHandler:
             self.db.delete(case)
             self.db.commit()
 
+    def _get_all_cases_for_user(self, user_id):
+        """
+        Get all cases for a user
+        """
+        try:
+            return self.db.query(Case).filter(Case.user_id == user_id).all()
+        except Exception as e:
+            print(e)
+            return []
+
     def _get_case_by_id(self, case_id):
         """
         Get a case by id
         """
         return self.db.query(Case).filter(Case.id == case_id).first()
-

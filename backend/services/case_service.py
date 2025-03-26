@@ -4,25 +4,44 @@ from backend.modules.cases.file_converter import FileConverter
 class CaseService:
     def __init__(self):
         self.case_handler = CaseHandler()
+    
+    def upload_case(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
+        """
+        Upload a case to S3 and the database from binary file data
+        
+        Args:
+            file_data: Binary content of the uploaded file
+            filename: Original filename with extension
+            user_id: ID of the user uploading
+            case_number: Optional case number identifier
+        """
 
-    def upload_case_to_s3_and_db(self, file_path, user_id, case_number=1):
-        """
-        Upload a case to S3 and the database
-        """
-        s3_key = self.case_handler._upload_case_to_s3(file_path, user_id)
-        case_content = FileConverter().convert_pdf_to_text(file_path)
+        # Check if file is PDF (based on extension)
+        if not filename.lower().endswith(".pdf"):
+            raise ValueError("Only PDF files are currently supported")
+        
+        # Upload binary data directly to S3
+        s3_key = self.case_handler._upload_case_to_s3(file_data, user_id)
+        
         try:
-            self.case_handler._add_case_to_db(file_path, user_id, s3_key, case_content, case_number)
+            # Convert binary data to text
+            file_converter = FileConverter()
+            case_content = file_converter.convert_pdf_from_bytes(file_data)
+            
+            # Add to database
+            case = self.case_handler._add_case_to_db(filename, user_id, s3_key, case_content, case_number)
+            return case
         except Exception as e:
-            # delete from s3 if case can not be added to the db
+            # Clean up S3 if database operation fails
             self.case_handler._delete_case_from_s3(s3_key)
             raise e
         
-    def delete_case(self, case_id: str, user_id: int):
+    def delete_case(self, case_id: str, user_id: str):
         """High-level business operation to delete a case"""
+
         # Get the case
         case = self.case_handler._get_case_by_id(case_id)
-        
+
         # Check if case exists
         if not case:
             raise ValueError(f"Case {case_id} not found")
@@ -36,20 +55,19 @@ class CaseService:
             raise ValueError("Cannot delete a case that is being processed")
             
         # Orchestrate deletion
-        self.case_handler.delete_case_from_s3(case.storage_path)
-        self.case_handler.delete_case_from_db(case_id)
+        self.case_handler._delete_case_from_s3(case.storage_path)
+        self.case_handler._delete_case_from_db(case_id)
         
         return {"message": "Case deleted successfully"}
 
-    def get_case_by_id(self, case_id):
+    def get_all_cases_for_user(self, user_id:str):
+        """
+        Get all cases for a user
+        """
+        return self.case_handler._get_all_cases_for_user(user_id)
+
+    def get_case_by_id(self, case_id:str):
         """
         Get a case by id
         """
-        return self.case_handler.get_case_by_id(case_id)
-
-if __name__ == "__main__":
-    cs = CaseService()
-    cs.upload_case_to_s3_and_db("backend/data/example_cases/case1.pdf", 1)
-    #check if case is in db
-    print(cs.get_case_by_id("test"))
-    cs.delete_case("test", 1)
+        return self.case_handler._get_case_by_id(case_id)

@@ -30,7 +30,7 @@ class UserResponse(UserBase):
     last_login_date: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserUpdate(UserBase):
     first_name: Optional[str]
