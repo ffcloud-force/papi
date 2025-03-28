@@ -1,4 +1,5 @@
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
@@ -18,7 +19,7 @@ from backend.config.settings import (
 )
 
 # OAuth2 setup
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 # Password hasher setup
 ph = PasswordHasher(
@@ -36,7 +37,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
     try:
         return ph.verify(hashed_password, password)
     except Exception as e:
-        return False
+        raise VerifyMismatchError("Password mismatch")
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -64,3 +65,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
         
     return user
+
+def admin_only(current_user: User = Depends(get_current_user)):
+    """Check if the current user is an admin"""
+    if not current_user.role.is_admin():
+        raise HTTPException(
+            status_code=403, 
+            detail="Admin privileges required"
+        )
+    return current_user
+
+def check_user_access(
+    user_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Check if current user can access the specified user"""
+    if not current_user.role.can_access_resource(user_id, current_user.id):
+        raise HTTPException(
+            status_code=403, 
+            detail="Du bist nicht berechtigt, diese Aktion auszuführen."
+        )
+    return current_user

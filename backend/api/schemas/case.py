@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Dict
 
 class CaseCreate(BaseModel):
@@ -37,3 +37,8 @@ class CaseCreate(BaseModel):
 class CaseDelete(BaseModel):
     case_id: str
     user_id: str
+
+class CaseBase(BaseModel):
+    model_config = ConfigDict(strict=True)
+    title: str
+    description: str

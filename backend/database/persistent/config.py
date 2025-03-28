@@ -4,8 +4,7 @@ Database configuration that works both locally and in the cloud
 
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Determine if we're in production or development
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")

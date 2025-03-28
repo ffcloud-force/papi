@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import List, Optional, Union
 import json
 
-class Question(BaseModel):
+class QuestionBase(BaseModel):
+    model_config = ConfigDict(strict=True)
     question: str
     context: Optional[str] = None
     difficulty: str

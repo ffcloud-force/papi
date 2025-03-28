@@ -1,18 +1,12 @@
-"""
-Basic database models for users and documents
-"""
-
 import uuid
+import json
+from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Table
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Boolean, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, JSON
-from typing import Optional, List
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.declarative import declarative_base
-import json
-
 from backend.database.persistent.config import Base
+
 
 # For SQLite compatibility with JSON
 class JSONType(TypeDecorator):
@@ -30,6 +24,16 @@ class JSONType(TypeDecorator):
             value = json.loads(value)
         return value
 
+class UserRole(Enum):
+    USER = "user"
+    ADMIN = "admin"
+
+    def is_admin(self):
+        return self == UserRole.ADMIN
+    
+    def can_access_resource(self, resource_owner_id: str, current_user_id: str):
+        return self == UserRole.ADMIN or resource_owner_id == current_user_id
+
 # User model
 class User(Base):
     __tablename__ = "users"
@@ -38,13 +42,16 @@ class User(Base):
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    email_verified = Column(Boolean, default=True) #@TODO: set to false once email verification is implemented
     password_hash = Column(String, nullable=False)  # Store hashed password + salt
-    # password_salt = Column(String, nullable=False)  # Store password salt
+    role = Column(SQLAlchemyEnum(UserRole, name="user_role_enum", create_type=False), default=UserRole.USER, nullable=False)
     registration_date = Column(DateTime, default=datetime.now)
     last_login_date = Column(DateTime, default=datetime.now)
     
-    # Relationship to cases
+    # All direct relationships
     cases = relationship("Case", back_populates="owner", cascade="all, delete-orphan")
+    question_sets = relationship("QuestionSet", back_populates="user", cascade="all, delete-orphan")
+    questions = relationship("ExamQuestion", back_populates="user", cascade="all, delete-orphan")  # New direct relationship
 
 # Case model
 class Case(Base):
@@ -63,21 +70,24 @@ class Case(Base):
     
     # Relationship to user
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
-    owner = relationship("User", back_populates="cases") 
-
+    owner = relationship("User", back_populates="cases")
+    
+    # Add relationship to question sets
+    question_sets = relationship("QuestionSet", back_populates="case", cascade="all, delete-orphan")
 
 # Exam question model
 class ExamQuestion(Base):
     __tablename__ = "exam_questions"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    question_set_id = Column(Integer, ForeignKey("question_sets.id", ondelete="CASCADE"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # Add direct user link
     question = Column(Text, nullable=False)
     context = Column(Text, nullable=True)
     difficulty = Column(String(10), nullable=False)
-    _keywords = Column("keywords", Text, nullable=False)  # Actual DB column
+    _keywords = Column("keywords", Text, nullable=False)
     general_type = Column(String(50), nullable=False)
     specific_type = Column(String(50), nullable=True)
-    question_set_id = Column(Integer, ForeignKey("question_sets.id"))
     answer = Column(Text, nullable=True)
     
     @property
@@ -93,26 +103,22 @@ class ExamQuestion(Base):
         else:
             self._keywords = value
     
-    # Relationship to question set
+    # All relationships
     question_set = relationship("QuestionSet", back_populates="questions")
-    
-    # Pydantic model for data validation
-    class Config:
-        orm_mode = True
+    user = relationship("User", back_populates="questions")  # New relationship to user
 
 # Question set model
 class QuestionSet(Base):
     __tablename__ = "question_sets"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    case_id = Column(String, ForeignKey("cases.id"), nullable=False)
+    case_id = Column(String, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # Keep direct user link
     topic = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     
-    # Relationship to questions
-    questions = relationship("ExamQuestion", back_populates="question_set")
-    
-    # Pydantic model for data validation
-    class Config:
-        orm_mode = True
+    # All relationships
+    case = relationship("Case", back_populates="question_sets")
+    user = relationship("User", back_populates="question_sets")
+    questions = relationship("ExamQuestion", back_populates="question_set", cascade="all, delete-orphan")
+
