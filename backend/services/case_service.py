@@ -5,7 +5,7 @@ class CaseService:
     def __init__(self):
         self.case_handler = CaseHandler()
     
-    def upload_case(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
+    def upload_case_and_generate_questions_and_answers(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
         """
         Upload a case to S3 and the database from binary file data
         
@@ -46,9 +46,9 @@ class CaseService:
         if not case:
             raise ValueError(f"Case {case_id} not found")
             
-        # Authorization check
-        if case.user_id != user_id:
-            raise PermissionError("You don't have permission to delete this case")
+        # # Authorization check
+        # if case.user_id != user_id:
+        #     raise PermissionError("You don't have permission to delete this case")
             
         # Business rule check
         if case.status == "processing":

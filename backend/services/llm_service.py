@@ -10,7 +10,6 @@ from backend.modules.llm.prompts.exam_prompts_test import (
 )
 from backend.database.persistent.models import ExamQuestion, QuestionSet
 from backend.services.database_service import DatabaseService
-from PyPDF2 import PdfReader
 import json
 import sqlalchemy.exc
 import asyncio
@@ -23,18 +22,7 @@ class LLMService:
         self.database_service = DatabaseService()
         self.case_text = None
     
-
     #PUBLIC METHODS
-    def load_case_document_from_file(self, file_path):
-        """Load case document from file path"""
-        with open(file_path, "rb") as file:
-            pdf_reader = PdfReader(file)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        self.case_text = text
-        return text
-    
     def load_case_document_from_database(self, case_id):
         """Load case document from database"""
         # @TODO: Implement this
@@ -45,7 +33,7 @@ class LLMService:
         # @TODO: Implement this
         pass
 
-    async def generate_all_questions_and_answers_async(self):
+    async def generate_all_questions_and_answers_async(self, user_id):
         """Generate questions for all prompt types asynchronously"""
         if not self.case_text:
             raise ValueError("Case text not loaded")
@@ -55,7 +43,7 @@ class LLMService:
         tasks = []
         for prompt_id in get_all_prompt_ids():
             print(f"Starting processing for prompt: {prompt_id}")
-            task = self._generate_questions_and_answers_async(prompt_id)
+            task = self._generate_questions_and_answers_async(prompt_id, user_id)
             tasks.append(task)
         
         # Execute all tasks concurrently
@@ -71,7 +59,7 @@ class LLMService:
         return results
     
     # Keep the sync version for compatibility
-    def generate_all_questions_and_answers(self):
+    def generate_all_questions_and_answers(self, user_id):
         """Generate questions for all prompt types (synchronous version)"""
         if not self.case_text:
             raise ValueError("Case text not loaded")
@@ -79,7 +67,7 @@ class LLMService:
         results = {}
         for prompt_id in get_all_prompt_ids():
             print(f"Processing prompt: {prompt_id}")
-            questions = self._generate_questions_and_answers(prompt_id)
+            questions = self._generate_questions_and_answers(prompt_id, user_id)
             if questions:
                 results[prompt_id] = questions
                 
@@ -105,7 +93,7 @@ class LLMService:
 
     #PRIVATE HIGHLEVEL METHODS
 
-    def _generate_questions_and_answers(self, prompt_id):
+    def _generate_questions_and_answers(self, prompt_id, user_id):
         """Generate questions with answers for a specific prompt"""
         # Get raw questions
         raw_questions, general_type, specific_type = self._generate_questions_for_prompt(prompt_id)
@@ -122,7 +110,7 @@ class LLMService:
                 
                 # Create question object
                 question = self._create_exam_question_object(
-                    raw_q, answer, general_type, specific_type
+                    raw_q, answer, general_type, specific_type, user_id
                 )
                 processed_questions.append(question)
                 
@@ -131,7 +119,7 @@ class LLMService:
 
         return processed_questions
     
-    async def _generate_questions_and_answers_async(self, prompt_id):
+    async def _generate_questions_and_answers_async(self, prompt_id, user_id):
         """Generate questions with answers for a specific prompt asynchronously"""
         # Get raw questions
         raw_questions, general_type, specific_type = await self._generate_questions_for_prompt_async(prompt_id)
@@ -144,7 +132,7 @@ class LLMService:
         tasks = []
         for raw_q in raw_questions:
             # Create a task for generating an answer for this question
-            task = self._process_question_async(raw_q, general_type, specific_type)
+            task = self._process_question_async(raw_q, general_type, specific_type, user_id)
             tasks.append(task)
         
         # Run all answer generations concurrently
@@ -153,7 +141,7 @@ class LLMService:
         # Filter out None results (from errors)
         return [q for q in processed_questions if q is not None]
 
-    async def _process_question_async(self, raw_q, general_type, specific_type):
+    async def _process_question_async(self, raw_q, general_type, specific_type, user_id):
         """Process a single question asynchronously"""
         try:
             # Generate answer
@@ -161,7 +149,7 @@ class LLMService:
             
             # Create question object
             question = self._create_exam_question_object(
-                raw_q, answer, general_type, specific_type
+                raw_q, answer, general_type, specific_type, user_id
             )
             return question
         except Exception as e:
@@ -299,7 +287,7 @@ class LLMService:
             print(f"Answer validation error: {str(e)}")
             return None
 
-    def _create_exam_question_object(self, raw_question, answer, general_type, specific_type):
+    def _create_exam_question_object(self, raw_question, answer, general_type, specific_type, user_id):
         """Create an ExamQuestion object from raw question data"""
         # Let the model handle conversion through its property
         return ExamQuestion(
@@ -309,5 +297,6 @@ class LLMService:
             keywords=raw_question["keywords"],  # Let the ExamQuestion model handle conversion
             general_type=general_type,
             specific_type=specific_type,
-            answer=answer
+            answer=answer,
+            user_id=user_id
         )

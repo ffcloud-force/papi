@@ -2,7 +2,7 @@ from pydantic import BaseModel, field_validator, ConfigDict
 from typing import List, Optional, Union
 import json
 
-class QuestionBase(BaseModel):
+class Question(BaseModel):
     model_config = ConfigDict(strict=True)
     question: str
     context: Optional[str] = None

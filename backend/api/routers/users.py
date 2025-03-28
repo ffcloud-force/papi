@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from backend.database.persistent.models import User
 from backend.database.persistent.config import get_db
 from backend.api.schemas.user import UserCreate, UserUpdate, UserDelete, UserResponse
-from backend.api.dependencies.auth import hash_password, verify_password, admin_only, check_user_access
+from backend.api.dependencies.auth import hash_password, verify_password, require_resource_access, admin_only, check_user_access, ResourceType
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/{user_id}")
 async def get_user(
     user_id: str,
-    _: User = Depends(lambda: check_user_access(user_id)),
+    _: User = Depends(admin_only),
     db: Session = Depends(get_db)
 ):
     """
@@ -26,7 +26,7 @@ async def get_user(
 
 @router.get("/")
 async def list_users(
-    _: User = Depends(admin_only),  # Admin-only endpoint
+    # _: User = Depends(admin_only),  # Admin-only endpoint
     db: Session = Depends(get_db)
 ):
     return db.query(User).all()
@@ -61,11 +61,11 @@ async def create_user(
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: str,
     user_update: UserUpdate,
-    current_user: User = Depends(lambda: check_user_access(user_id)),
+    current_user: User = Depends(require_resource_access(ResourceType.USER)),
     db: Session = Depends(get_db)
 ):
+    #@TODO: NEEDS WORK, NOT A PRIO
     # If updating sensitive fields (email/password), require current password
     if user_update.email or user_update.password:
         if not user_update.current_password:
@@ -113,11 +113,10 @@ async def update_user(
 
 @router.delete("/{user_id}")
 async def delete_user(
-    user_id: str, 
-    _: User = Depends(lambda: check_user_access(user_id)),
+    current_user: User = Depends(require_resource_access(ResourceType.USER)),
     db: Session = Depends(get_db)
 ):
-    existing_user = db.query(User).filter(User.id == user_id).first()
+    existing_user = db.query(User).filter(User.id == current_user.id).first()
     if existing_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(existing_user)

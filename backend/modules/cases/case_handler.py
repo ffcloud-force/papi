@@ -130,6 +130,17 @@ class CaseHandler:
             # You can log, handle, or re-raise as needed
             raise ValueError("Invalid case data") from e
 
+    def _update_case_status(self, case_id, status):
+        """
+        Update the status of a case in the database
+        """
+        case = self.db.query(Case).filter(Case.id == case_id).first()
+        if case:
+            case.status = status
+            self.db.commit()
+            return case
+        return None
+
     def _delete_case_from_db(self, case_id):
         """
         Delete a case from the database
