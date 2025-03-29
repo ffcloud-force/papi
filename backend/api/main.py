@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routers import cases, users, auth, chat
 import uvicorn
@@ -8,30 +9,12 @@ from backend.database.persistent.config import SessionLocal
 from backend.database.persistent.models import User, UserRole
 from backend.api.dependencies.auth import hash_password
 
-app = FastAPI(
-    title="PAPI BOT API",
-    description="API for the PAPI BOT",
-    version="0.1.0",
-    docs_url="/docs"  # This is the default but just to be explicit
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Include routers
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(cases.router, prefix="/cases", tags=["Cases"])
-app.include_router(chat.router, prefix="/chat", tags=["Chat"])
-
 # Create admin user if no users exist – for development purposes
-@app.on_event("startup")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_admin_if_needed()
+    yield
+
 async def create_admin_if_needed():
     """Check if any users exist in the DB, if not create an admin user"""
     db = SessionLocal()
@@ -62,6 +45,30 @@ async def create_admin_if_needed():
             print("="*50 + "\n")
     finally:
         db.close()
+
+app = FastAPI(
+    title="PAPI BOT API",
+    description="API for the PAPI BOT",
+    version="0.1.0",
+    docs_url="/docs",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(cases.router, prefix="/cases", tags=["Cases"])
+app.include_router(chat.router, prefix="/chat", tags=["Chat"])
+
 
 @app.get("/")
 def read_root():

@@ -9,6 +9,7 @@ from backend.modules.llm.prompts.exam_prompts_test import (
     get_all_prompt_ids, get_examiner_prompt_answer
 )
 from backend.database.persistent.models import ExamQuestion, QuestionSet
+from backend.modules.cases.file_converter import FileConverter
 from backend.services.database_service import DatabaseService
 import json
 import sqlalchemy.exc
@@ -20,9 +21,18 @@ class LLMService:
     def __init__(self):
         self.llm_handler = LLMHandler()
         self.database_service = DatabaseService()
+        self.file_converter = FileConverter()
         self.case_text = None
     
     #PUBLIC METHODS
+    def load_case_document_from_stream(self, file_data: bytes):
+        """Load case document from stream"""
+        try:
+            self.case_text = self.file_converter.convert_pdf_from_bytes(file_data)
+        except Exception as e:
+            print(f"Error loading case document from stream: {e}")
+            raise e
+
     def load_case_document_from_database(self, case_id):
         """Load case document from database"""
         # @TODO: Implement this
@@ -35,6 +45,7 @@ class LLMService:
 
     async def generate_all_questions_and_answers_async(self, user_id):
         """Generate questions for all prompt types asynchronously"""
+        import pdb; pdb.set_trace()
         if not self.case_text:
             raise ValueError("Case text not loaded")
             
@@ -73,11 +84,12 @@ class LLMService:
                 
         return results
     
-    def store_questions(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
+    def store_questions_and_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
         """Store the generated questions in the database using DatabaseService"""
         try:
+            import pdb; pdb.set_trace()
             # Use the database service to store questions
-            question_set = self.database_service.create_question_set(
+            question_set = self.database_service.create_questions_and_set(
                 questions, user_id, case_id
             )
             return question_set

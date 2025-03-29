@@ -25,7 +25,7 @@ class CaseHandler:
         return hashlib.sha256(unique_string.encode()).hexdigest()
 
     ## S3 operations ##
-    def _upload_case_to_s3(self, file_data, user_id):
+    def _upload_case_to_s3(self, file_data:bytes, user_id:str):
         """
         Upload file data to S3
         
@@ -54,7 +54,7 @@ class CaseHandler:
             else:
                 # Some other error occurred with the S3 request
                 raise
-        return s3_key  # Return the S3 path for storage in your database
+        return s3_key, case_id  # Return the S3 path and case id for storage in your database
 
     def _delete_case_from_s3(self, s3_key):
         """
@@ -80,7 +80,7 @@ class CaseHandler:
         return s3_key
 
     ## DB operations ##
-    def _add_case_to_db(self, filename, user_id, s3_key, case_content, case_number=1):
+    def _add_case_to_db(self, filename:str, user_id:str, s3_key:str, case_id:str, case_content:str, case_number:int=1):
         """
         Add case to database with extracted text content and validation
         """
@@ -97,10 +97,7 @@ class CaseHandler:
                 case_number=case_number,
                 user_id=user_id
             )
-            
-            # Generate ID after validation
-            case_id = self._generate_case_id(user_id, case_content)
-            
+
             # Create SQLAlchemy model instance
             case = Case(
                 id=case_id,

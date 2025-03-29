@@ -12,20 +12,29 @@ router = APIRouter()
 @router.post("/upload_case")
 async def upload_case(
     file: UploadFile = File(...),
-    case_number: int = Form(1),
+    # case_number: int = Form(1),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Upload a case to s3 and the database from a file, processes the file, generates questions + sets and answers, and stores them in the database
+
+    Args:
+        file: The file to upload
+    """
     case_service = CaseService()
 
+    # @TODO: Add a check to see how many files the user has uploaded, if they have reached the limit, return a message saying they have reached the limit and need to delete one of the files.
+    case_number = 1
+    
     try:
         # Read file contents
         file_data = await file.read()
         
         # Process using our service
-        case_service.upload_case_and_generate_questions_and_answers(
+        await case_service.process_case_async_and_store_case_and_qanda(
             file_data=file_data,
-            filename=file.filename,  # We're using filename as a parameter
+            filename=file.filename,
             user_id=current_user.id,
             case_number=case_number
         )

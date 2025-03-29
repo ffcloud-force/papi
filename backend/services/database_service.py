@@ -30,7 +30,7 @@ class DatabaseService:
         return self.db.query(Case).filter(Case.user_id == user_id).all()
 
     # Question-specific operations
-    def create_question_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
+    def create_questions_and_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
         """
         Create question sets for all topics in a single transaction.
         Each topic gets its own QuestionSet.

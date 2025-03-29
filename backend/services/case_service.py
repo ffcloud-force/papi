@@ -1,11 +1,45 @@
 from backend.modules.cases.case_handler import CaseHandler
 from backend.modules.cases.file_converter import FileConverter
+from backend.services.llm_service import LLMService
 
 class CaseService:
     def __init__(self):
         self.case_handler = CaseHandler()
+        self.llm_service = LLMService()
     
-    def upload_case_and_generate_questions_and_answers(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
+    async def process_case_async_and_store_case_and_qanda(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
+        """
+        Process a case to generate questions and answers, store the case and the questions and answers in the database
+        
+        Args:
+            file_data: Binary content of the uploaded file
+            filename: Original filename with extension
+            user_id: ID of the user uploading
+            case_number: Optional case number identifier
+
+        Returns:
+        """
+        try:
+            processed_case, case_id = self.upload_case(file_data, filename, user_id, case_number)
+        except Exception as e:
+            print(f"Error processing case: {e}")
+            raise e
+        
+        qanda = {}
+        try:
+            self.llm_service.case_text = processed_case.content_text
+            qanda = await self.llm_service.generate_all_questions_and_answers_async(user_id)
+        except Exception as e:
+            print(f"Error generating questions and answers: {e}")
+            raise e
+        
+        try:
+            self.llm_service.store_questions_and_set(qanda, user_id, case_id)
+        except Exception as e:
+            print(f"Error storing questions: {e}")
+            raise e
+
+    def upload_case(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
         """
         Upload a case to S3 and the database from binary file data
         
@@ -21,7 +55,7 @@ class CaseService:
             raise ValueError("Only PDF files are currently supported")
         
         # Upload binary data directly to S3
-        s3_key = self.case_handler._upload_case_to_s3(file_data, user_id)
+        s3_key, case_id = self.case_handler._upload_case_to_s3(file_data, user_id)
         
         try:
             # Convert binary data to text
@@ -29,8 +63,8 @@ class CaseService:
             case_content = file_converter.convert_pdf_from_bytes(file_data)
             
             # Add to database
-            case = self.case_handler._add_case_to_db(filename, user_id, s3_key, case_content, case_number)
-            return case
+            case = self.case_handler._add_case_to_db(filename, user_id, s3_key, case_id, case_content, case_number)
+            return case, case_id
         except Exception as e:
             # Clean up S3 if database operation fails
             self.case_handler._delete_case_from_s3(s3_key)
