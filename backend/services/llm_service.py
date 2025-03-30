@@ -1,14 +1,14 @@
 from backend.modules.llm.llm_handler import LLMHandler
 from backend.api.schemas.qanda import Question, Answer
-# from backend.modules.llm.prompts.exam_prompts import (
-#     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
-#     get_all_prompt_ids, get_examiner_prompt_answer
-# )
-from backend.modules.llm.prompts.exam_prompts_test import (
+from backend.modules.llm.prompts.exam_prompts import (
     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
     get_all_prompt_ids, get_examiner_prompt_answer
 )
-from backend.database.persistent.models import ExamQuestion, QuestionSet
+# from backend.modules.llm.prompts.exam_prompts_test import (
+#     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
+#     get_all_prompt_ids, get_examiner_prompt_answer
+# )
+from backend.database.persistent.models import ExamQuestion
 from backend.modules.cases.file_converter import FileConverter
 from backend.services.database_service import DatabaseService
 import json
@@ -45,28 +45,36 @@ class LLMService:
 
     async def generate_all_questions_and_answers_async(self, user_id):
         """Generate questions for all prompt types asynchronously"""
-        import pdb; pdb.set_trace()
         if not self.case_text:
             raise ValueError("Case text not loaded")
-            
+
         results = {}
-        # Create a list of tasks for all prompt types
-        tasks = []
-        for prompt_id in get_all_prompt_ids():
-            print(f"Starting processing for prompt: {prompt_id}")
-            task = self._generate_questions_and_answers_async(prompt_id, user_id)
-            tasks.append(task)
+        # Get all prompt IDs
+        prompt_ids = get_all_prompt_ids()
         
-        # Execute all tasks concurrently
+        # Use a semaphore to limit concurrency - adjust the value based on your needs
+        # Start with a small number like 2-3 to avoid rate limits
+        semaphore = asyncio.Semaphore(3)
+        
+        # Create tasks with semaphore control
+        tasks = [self._process_with_semaphore(
+            semaphore, 
+            self._generate_questions_and_answers_async, 
+            prompt_id, 
+            user_id
+        ) for prompt_id in prompt_ids]
+        
+        # Execute tasks with concurrency control
         completed_tasks = await asyncio.gather(*tasks)
         
-        # Process results
-        for i, prompt_id in enumerate(get_all_prompt_ids()):
-            questions = completed_tasks[i]
-            if questions:
-                results[prompt_id] = questions
+        # Process results - handle exceptions properly here
+        for result, prompt_id in completed_tasks:
+            if result is not None:
+                results[prompt_id] = result
                 print(f"Completed processing for prompt: {prompt_id}")
-                
+            else:
+                print(f"No results for prompt: {prompt_id}")
+
         return results
     
     # Keep the sync version for compatibility
@@ -87,12 +95,11 @@ class LLMService:
     def store_questions_and_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
         """Store the generated questions in the database using DatabaseService"""
         try:
-            import pdb; pdb.set_trace()
             # Use the database service to store questions
-            question_set = self.database_service.create_questions_and_set(
+            question_sets = self.database_service.create_questions_and_set(
                 questions, user_id, case_id
             )
-            return question_set
+            return question_sets
         except json.JSONDecodeError as e:
             print(f"JSON error: {e}")
             return None
@@ -140,18 +147,24 @@ class LLMService:
             return []
             
         # Process each question individually with answers
-        # Create a list of tasks for all questions
-        tasks = []
-        for raw_q in raw_questions:
-            # Create a task for generating an answer for this question
-            task = self._process_question_async(raw_q, general_type, specific_type, user_id)
-            tasks.append(task)
+        # Use a semaphore to limit concurrency for question processing
+        question_semaphore = asyncio.Semaphore(2)
         
-        # Run all answer generations concurrently
-        processed_questions = await asyncio.gather(*tasks)
+        # Create tasks with semaphore control
+        tasks = [self._process_with_semaphore(
+            question_semaphore,
+            self._process_question_async,
+            raw_q,
+            general_type, 
+            specific_type, 
+            user_id
+        ) for raw_q in raw_questions]
         
-        # Filter out None results (from errors)
-        return [q for q in processed_questions if q is not None]
+        # Run all answer generations with controlled concurrency
+        processed_results = await asyncio.gather(*tasks)
+        
+        # Filter out None results (from errors) and extract just the first element of the tuple
+        return [result for result, _ in processed_results if result is not None]
 
     async def _process_question_async(self, raw_q, general_type, specific_type, user_id):
         """Process a single question asynchronously"""
@@ -169,6 +182,23 @@ class LLMService:
             return None
 
     #PRIVATE LOWLEVEL METHODS
+
+    async def _process_with_semaphore(self, semaphore, processing_func, item, *args):
+        """Generic semaphore-controlled processing function
+        
+        Args:
+            semaphore: The semaphore to control concurrency
+            processing_func: The async function to call
+            item: The primary item to process (prompt_id or question)
+            *args: Additional arguments to pass to the processing function
+        """
+        async with semaphore:
+            try:
+                result = await processing_func(item, *args)
+                return result, item
+            except Exception as e:
+                print(f"Error processing {item}: {str(e)}")
+                return None, item
 
     async def _generate_questions_for_prompt_async(self, prompt_id):
         """Generate raw questions for a specific prompt without answers asynchronously"""

@@ -1,6 +1,7 @@
 from backend.modules.cases.case_handler import CaseHandler
 from backend.modules.cases.file_converter import FileConverter
 from backend.services.llm_service import LLMService
+from backend.database.persistent.models import CaseStatus
 
 class CaseService:
     def __init__(self):
@@ -28,11 +29,18 @@ class CaseService:
         qanda = {}
         try:
             self.llm_service.case_text = processed_case.content_text
+            self.update_case_status(case_id, CaseStatus.PROCESSING)
             qanda = await self.llm_service.generate_all_questions_and_answers_async(user_id)
         except Exception as e:
-            print(f"Error generating questions and answers: {e}")
+            print(f"Error generating questions and answers: {e} – cleaning up case")
+            self.update_case_status(case_id, CaseStatus.FAILED)
+            self.case_handler._delete_case_from_s3(processed_case.storage_path)
+            self.case_handler._delete_case_from_db(case_id)
             raise e
         
+        # change case status to completed
+        self.update_case_status(case_id, CaseStatus.COMPLETED)
+
         try:
             self.llm_service.store_questions_and_set(qanda, user_id, case_id)
         except Exception as e:
@@ -85,7 +93,7 @@ class CaseService:
         #     raise PermissionError("You don't have permission to delete this case")
             
         # Business rule check
-        if case.status == "processing":
+        if case.status == CaseStatus.PROCESSING:
             raise ValueError("Cannot delete a case that is being processed")
             
         # Orchestrate deletion
@@ -93,6 +101,12 @@ class CaseService:
         self.case_handler._delete_case_from_db(case_id)
         
         return {"message": "Case deleted successfully"}
+
+    def update_case_status(self, case_id:str, status:CaseStatus):
+        """
+        Update the status of a case
+        """
+        return self.case_handler._update_case_status(case_id, status)
 
     def get_all_cases_for_user(self, user_id:str):
         """

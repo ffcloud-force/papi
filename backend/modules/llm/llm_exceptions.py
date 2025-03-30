@@ -13,3 +13,7 @@ class LLMParsingError(LLMError):
 class QuestionGenerationError(LLMError):
     """Errors in the question generation process"""
     pass
+
+class RateLimitError(LLMError):
+    """Rate limit errors from the LLM API"""
+    pass

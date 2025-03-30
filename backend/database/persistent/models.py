@@ -53,6 +53,12 @@ class User(Base):
     question_sets = relationship("QuestionSet", back_populates="user", cascade="all, delete-orphan")
     questions = relationship("ExamQuestion", back_populates="user", cascade="all, delete-orphan")  # New direct relationship
 
+class CaseStatus(Enum):
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
 # Case model
 class Case(Base):
     __tablename__ = "cases"
@@ -63,7 +69,7 @@ class Case(Base):
     upload_date = Column(DateTime, default=datetime.now)
     file_type = Column(String) # type of the file (pdf, docx, etc.)
     file_size = Column(Integer) # size of the file in bytes
-    status = Column(String) # status of the document (uploaded, processed, etc.)
+    status = Column(SQLAlchemyEnum(CaseStatus, name="case_status_enum", create_type=False), default=CaseStatus.UPLOADED, nullable=False) # status of the document (uploaded, processed, etc.)
     case_number = Column(Integer)  # 1 or 2
     case_metadata = Column(JSON) # metadata of the document
     content_text = Column(Text) # extracted text content of the document

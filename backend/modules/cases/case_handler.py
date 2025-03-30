@@ -1,6 +1,5 @@
 from backend.database.persistent.config import get_db
-from backend.modules.cases.file_converter import FileConverter
-from backend.database.persistent.models import Case
+from backend.database.persistent.models import Case, CaseStatus
 from backend.api.schemas.case import CaseCreate
 from pydantic import ValidationError
 import hashlib
@@ -106,7 +105,7 @@ class CaseHandler:
                 content_text=case_model.case_content,
                 file_type=case_model.file_type,
                 file_size=case_model.file_size,
-                status="uploaded",
+                status=CaseStatus.UPLOADED,
                 case_number=case_model.case_number,
                 case_metadata=case_model.case_metadata,
                 user_id=case_model.user_id
