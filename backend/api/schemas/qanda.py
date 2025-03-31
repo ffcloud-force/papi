@@ -48,6 +48,7 @@ class Question(BaseModel):
             data['keywords'] = json.dumps(data['keywords'])
         return data
 
+
 class Answer(BaseModel):
     content: str
     
@@ -57,3 +58,10 @@ class Answer(BaseModel):
         if len(v) < 20:
             raise ValueError('Answer must be at least 20 characters')
         return v
+
+class QuestionRetrieve(Question):
+    id: str
+    general_type: str
+    specific_type: str
+
+    answer: Answer

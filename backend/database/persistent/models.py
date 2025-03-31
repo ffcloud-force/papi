@@ -128,3 +128,11 @@ class QuestionSet(Base):
     user = relationship("User", back_populates="question_sets")
     questions = relationship("ExamQuestion", back_populates="question_set", cascade="all, delete-orphan")
 
+# Chat History for a specific Exam Question
+class ExamQuestionChat(Base):
+    __tablename__ = "exam_question_chats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    question_id = Column(Integer, ForeignKey("exam_questions.id", ondelete="CASCADE"), nullable=False)
+    chat = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)

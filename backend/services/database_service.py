@@ -1,32 +1,29 @@
 from backend.database.persistent.config import SessionLocal
 from backend.database.persistent.models import User, Case, ExamQuestion, QuestionSet
-from sqlalchemy.orm import Session
+from backend.api.schemas.qanda import QuestionRetrieve
+from backend.modules.database.database_handler import DatabaseHandler
 
 class DatabaseService:
     def __init__(self):
         self.db = SessionLocal()
-
-    def get_db(self):
-        return self.db
+        self.db_handler = DatabaseHandler()
 
     # User-specific operations
     def create_user(self, user_data):
-        user = User(**user_data)
-        self.db.add(user)
-        self.db.commit()
-        return user
+        # TODO: Add validation
+        return self.db_handler.create_user(user_data)
 
     def get_user_by_id(self, user_id):
-        return self.db.query(User).filter(User.id == user_id).first()
+        # TODO: Add validation
+        return self.db_handler.get_user_by_id(user_id)
 
     # Case-specific operations
     def create_case(self, case_data):
-        case = Case(**case_data)
-        self.db.add(case)
-        self.db.commit()
-        return case
+        # TODO: Add validation
+        return self.db_handler.create_case(case_data)
 
     def get_cases_for_user(self, user_id):
+        # TODO: Add validation
         return self.db.query(Case).filter(Case.user_id == user_id).all()
 
     # Question-specific operations
@@ -49,7 +46,7 @@ class DatabaseService:
                 question_set = QuestionSet(
                     user_id=user_id,
                     case_id=case_id,
-                    topic=topic  # You might need to add this field to your QuestionSet model
+                    topic=topic
                 )
                 self.db.add(question_set)
                 self.db.flush()  # Get the ID without committing
@@ -69,3 +66,38 @@ class DatabaseService:
             self.db.rollback()
             print(f"Error creating question sets: {str(e)}")
             raise
+
+    def get_questions_by_topic_for_user(self, case_id: str, general_type: str, specific_type: str, user_id: str) -> list[dict]:
+        """
+        Get questions by topic for a user
+
+        Args:
+            case_id: ID of the case
+            general_type: General type of the questions
+            specific_type: Specific type of the questions
+            user_id: ID of the user
+
+        Returns:
+            List of questions
+        """
+        topic = f"{general_type}_{specific_type}"
+        question_set = self.db_handler.get_question_set_by_topic_for_user(case_id, topic, user_id)
+        
+        validated_questions = []
+        for question in question_set.questions:
+            try:
+                validated_question = QuestionRetrieve(
+                    id=question.id,
+                    question=question.question,
+                    context=question.context,
+                    difficulty=question.difficulty,
+                    keywords=question.keywords,
+                    general_type=question.general_type,
+                    specific_type=question.specific_type,
+                    answer=question.answer
+                )
+                validated_questions.append(validated_question)
+            except Exception as e:
+                print(f"Error validating question: {str(e)}")
+                continue
+        return validated_questions

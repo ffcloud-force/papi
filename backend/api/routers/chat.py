@@ -9,16 +9,6 @@ from backend.api.schemas.chat import ChatMessage
 router = APIRouter()
 session_manager = SessionManager()
 
-# @router.post("/")
-# async def chat(chat_message: chat.ChatMessage, db: Session = Depends(get_db)):
-    
-#     # should check whether a session exists in cache databasefor the user
-#     # if not, create a new session, when this is done the chat history should be loaded into cache from the database
-#     # if yes, add the message to the session    
-    
-#     assistant = Assistant()
-#     return {"message": assistant.get_completion(chat_message.message)}
-
 @router.post("/")
 async def chat_endpoint(chat_message: ChatMessage):
     # Get or create session for this user
