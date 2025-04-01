@@ -7,7 +7,10 @@ from backend.database.persistent.config import get_db
 from backend.database.persistent.models import User
 from backend.api.schemas.auth import LoginResponse, Token
 from backend.api.schemas.user import UserResponse
-from backend.api.dependencies.auth import get_current_user, create_access_token, verify_password, check_user_access
+from backend.api.dependencies.auth import get_current_user, create_access_token, check_user_access
+from backend.utils.password_utils import verify_password
+from backend.services.database_service import DatabaseService
+from backend.api.dependencies.database_service import get_database_service
 
 router = APIRouter()
 
@@ -17,7 +20,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 @router.post("/token")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db_service: DatabaseService = Depends(get_database_service)
 ):
     """
     Get access token for authentication.
@@ -27,7 +30,7 @@ def login(
     - Note: Client ID and Secret are not required
     """
     # Find user by email
-    user = db.query(User).filter(User.email == form_data.username).first()
+    user = db_service.get_user_by_email(form_data.username)
     
     if not user:
         raise HTTPException(
@@ -47,8 +50,7 @@ def login(
         )
     
     # Update last login date
-    user.last_login_date = datetime.now()
-    db.commit()
+    db_service.update_user_last_login(user.id)
     
     # Create access token
     access_token = create_access_token(
@@ -63,7 +65,7 @@ def login(
 @router.get("/me")
 async def read_users_me(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db_service: DatabaseService = Depends(get_database_service)
 ):
 
     # Convert SQL model to Pydantic model

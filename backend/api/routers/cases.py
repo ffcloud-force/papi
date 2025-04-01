@@ -1,20 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
-from backend.database.persistent.config import get_db
-from backend.api.schemas import case
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from backend.services.case_service import CaseService
 from backend.api.dependencies.auth import get_current_user, require_resource_access
-from backend.database.persistent.models import User, Case, QuestionSet
+from backend.database.persistent.models import User, Case, QuestionSet, CaseStatus
 from backend.api.dependencies.auth import ResourceType
+from backend.api.dependencies.case_service import get_case_service
+from typing import Annotated
 
 router = APIRouter()
 
+case_service_dependency = Annotated[CaseService, Depends(get_case_service)]
+current_user_dependency = Annotated[User, Depends(get_current_user)]
+current_user_resource_access_dependency = Annotated[User, Depends(require_resource_access(ResourceType.CASE))]
+
 @router.post("/upload_case")
 async def upload_case(
-    file: UploadFile = File(...),
-    # case_number: int = Form(1),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    case_service: case_service_dependency,
+    current_user: current_user_dependency,
+    file: UploadFile = File(...)
 ):
     """
     Upload a case to s3 and the database from a file, processes the file, generates questions + sets and answers, and stores them in the database
@@ -22,7 +24,6 @@ async def upload_case(
     Args:
         file: The file to upload
     """
-    case_service = CaseService()
 
     # @TODO: Add a check to see how many files the user has uploaded, if they have reached the limit, return a message saying they have reached the limit and need to delete one of the files.
     case_number = 1
@@ -49,19 +50,17 @@ async def upload_case(
 
 @router.get("/get_all_cases")
 async def get_all_cases(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: current_user_dependency,
+    case_service: case_service_dependency
 ):
-    case_service = CaseService()
     return case_service.get_all_cases_for_user(current_user.id)
 
 @router.delete("/delete_case/{case_id}")
 async def delete_case(
     case_id: str,
-    current_user: User = Depends(require_resource_access(ResourceType.CASE)),
-    db: Session = Depends(get_db)
+    case_service: case_service_dependency,
+    current_user: current_user_resource_access_dependency
 ):
-    case_service = CaseService()
     try:
         case_service.delete_case(case_id, current_user.id)
         return {"message": "Case deleted successfully"}
@@ -71,31 +70,27 @@ async def delete_case(
 @router.get("/get_case/{case_id}")
 async def get_case(
     case_id: str,
-    current_user: User = Depends(require_resource_access(ResourceType.CASE)),
-    db: Session = Depends(get_db)
+    case_service: case_service_dependency,
+    _: current_user_resource_access_dependency
 ):
-    case_service = CaseService()
     return case_service.get_case_by_id(case_id)
 
 @router.get("/get_case_questions/{case_id}")
 async def get_case_questions(
     case_id: str,
-    current_user: User = Depends(require_resource_access(ResourceType.CASE)),
-    db: Session = Depends(get_db)
+    case_service: case_service_dependency,
+    _: current_user_resource_access_dependency
 ):
     # Get all question sets for this case
-    question_sets = db.query(QuestionSet).filter(
-        QuestionSet.case_id == case_id,
-        QuestionSet.user_id == current_user.id
-    ).all()
+    question_sets = case_service.get_question_sets_by_case_id(case_id)
     
     if not question_sets:
-        case = db.query(Case).filter(Case.id == case_id).first()
-        if case and case.status == "processing":
+        case = case_service.get_case_by_id(case_id)
+        if case and case.status == CaseStatus.PROCESSING:
             return {"status": "processing", "message": "Questions are being generated"}
-        elif case and case.status == "error":
+        elif case and case.status == CaseStatus.ERROR:
             return {"status": "error", "message": "An error occurred while generating questions"}
-        elif case and case.status == "uploaded":
+        elif case and case.status == CaseStatus.UPLOADED:
             return {"status": "not_started", "message": "Question generation has not started"}
         else:
             return {"status": "no_questions", "message": "No questions found for this case"}

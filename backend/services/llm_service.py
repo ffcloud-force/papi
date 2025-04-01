@@ -1,15 +1,15 @@
-from backend.modules.llm.llm_handler import LLMHandler
+from backend.handler.llm.llm_handler import LLMHandler
 from backend.api.schemas.qanda import Question, Answer
-from backend.modules.llm.prompts.exam_prompts import (
+from backend.handler.llm.prompts.exam_prompts import (
     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
     get_all_prompt_ids, get_examiner_prompt_answer
 )
-# from backend.modules.llm.prompts.exam_prompts_test import (
+# from backend.handler.llm.prompts.exam_prompts_test import (
 #     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
 #     get_all_prompt_ids, get_examiner_prompt_answer
 # )
 from backend.database.persistent.models import ExamQuestion
-from backend.modules.cases.file_converter import FileConverter
+from backend.handler.storage.file_converter import FileConverter
 from backend.services.database_service import DatabaseService
 import json
 import sqlalchemy.exc

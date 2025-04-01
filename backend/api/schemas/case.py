@@ -1,5 +1,7 @@
 from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Dict
+from datetime import datetime
+from backend.database.persistent.models import CaseStatus
 
 class CaseCreate(BaseModel):
     filename: str
@@ -32,8 +34,7 @@ class CaseCreate(BaseModel):
         if file_type == 'pdf' and v > 10_000_000:
             raise ValueError('PDF files cannot be larger than 10MB')
         return v
-    
-    
+
 class CaseDelete(BaseModel):
     case_id: str
     user_id: str
@@ -42,3 +43,31 @@ class CaseBase(BaseModel):
     model_config = ConfigDict(strict=True)
     title: str
     description: str
+
+class CaseRetrieveParams(BaseModel):
+    """Validates input parameters for case retrieval"""
+    model_config = ConfigDict(strict=True)
+    
+    case_id: str
+    user_id: str | None = None
+
+    @field_validator('case_id')
+    @classmethod
+    def validate_case_id(cls, v):
+        if not v or len(v) != 64:  # Assuming SHA-256 hash
+            raise ValueError("Invalid case ID format")
+        return v
+
+class CaseResponse(BaseModel):
+    """Validates case data returned from database"""
+    model_config = ConfigDict(strict=True)
+    
+    id: str
+    filename: str
+    file_type: str
+    file_size: int
+    status: CaseStatus
+    case_number: int
+    user_id: str
+    created_at: datetime
+    updated_at: datetime

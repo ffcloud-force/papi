@@ -40,13 +40,12 @@ class UserCreate(UserBase):
         return v
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     role: UserRole
     registration_date: datetime
     last_login_date: datetime
-
-    class ConfigDict:
-        from_attributes = True
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=2, max_length=50)

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from backend.database.persistent.config import get_db
 from backend.api.schemas import chat
-from backend.modules.llm.llm_handler import LLMHandler
-from backend.modules.session.session_manager import SessionManager
+from backend.handler.llm.llm_handler import LLMHandler
+from backend.handler.session.session_manager import SessionManager
 from backend.api.schemas.chat import ChatMessage
 
 router = APIRouter()

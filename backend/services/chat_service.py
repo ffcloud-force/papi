@@ -1,4 +1,4 @@
-from backend.modules.chat.chat_handler import ChatHandler
+from backend.handler.chat.chat_handler import ChatHandler
 
 
 class ChatService:

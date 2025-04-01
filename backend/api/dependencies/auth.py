@@ -1,55 +1,29 @@
 from enum import Enum
-from typing import Optional, Callable, Literal
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from typing import Callable, Annotated
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends, HTTPException, status, Path
+from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
-from backend.database.persistent.config import get_db
 from backend.database.persistent.models import User, Case
+from backend.services.database_service import DatabaseService
+from backend.api.dependencies.database_service import get_database_service
+import inspect
 from backend.config.settings import (
     JWT_SECRET_KEY,
     JWT_ALGORITHM,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    ARGON2_TIME_COST,
-    ARGON2_MEMORY_COST,
-    ARGON2_PARALLELISM,
-    ARGON2_HASH_LENGTH,
-    ARGON2_SALT_LENGTH
+    ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from functools import partial
-import inspect
 
 # OAuth2 setup
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-# Password hasher setup
-ph = PasswordHasher(
-    time_cost=ARGON2_TIME_COST,
-    memory_cost=ARGON2_MEMORY_COST,
-    parallelism=ARGON2_PARALLELISM,
-    hash_len=ARGON2_HASH_LENGTH,
-    salt_len=ARGON2_SALT_LENGTH,
-)
+db_service_dependency = Annotated[DatabaseService, Depends(get_database_service)]
 
-def hash_password(password: str) -> str:
-    return ph.hash(password)
-
-def verify_password(password: str, hashed_password: str) -> bool:
-    try:
-        return ph.verify(hashed_password, password)
-    except Exception as e:
-        raise VerifyMismatchError("Password mismatch")
-
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(
+        db_service: db_service_dependency,
+        token: str = Depends(oauth2_scheme)
+): 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -64,11 +38,23 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise credentials_exception
         
-    user = db.query(User).filter(User.email == email).first()
+    user = db_service.get_user_by_email(email)
     if user is None:
         raise credentials_exception
         
     return user
+
+current_user_dependency = Annotated[User, Depends(get_current_user)]
+
+
+def create_access_token(
+        data: dict, 
+        expires_delta: timedelta = None
+):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 def admin_only(current_user: User = Depends(get_current_user)):
     """Check if the current user is an admin"""
@@ -101,7 +87,6 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
     """
     Factory function that creates a dependency for checking resource access.
     """
-    # Define the parameter name based on resource type
     param_name = {
         ResourceType.CASE: "case_id",
         ResourceType.USER: "user_id",
@@ -109,8 +94,8 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
     }[resource_type]
 
     def check_access(
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user),
+        current_user: current_user_dependency,
+        db_service: db_service_dependency,
         **path_params  # This will receive all path parameters
     ) -> User:
         # Get the ID from the correct path parameter
@@ -125,7 +110,7 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
         if resource_type == ResourceType.USER:
             owner_id = resource_id
         elif resource_type == ResourceType.CASE:
-            case = db.query(Case).filter(Case.id == resource_id).first()
+            case = db_service.get_case_by_id(resource_id)
             if not case:
                 raise HTTPException(status_code=404, detail=f"{resource_type.value} not found")
             owner_id = case.user_id
@@ -139,7 +124,7 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
             
         return current_user
     
-    # Set the dependency's signature to match the route parameter
+    # Update the signature to use db_service instead of db
     check_access.__signature__ = inspect.signature(check_access).replace(
         parameters=[
             inspect.Parameter(
@@ -148,7 +133,7 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
                 annotation=str
             ),
             *[p for p in inspect.signature(check_access).parameters.values()
-              if p.name in ('db', 'current_user')]
+              if p.name in ('db_service', 'current_user')]
         ]
     )
     

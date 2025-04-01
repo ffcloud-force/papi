@@ -1,5 +1,5 @@
-from backend.modules.llm.providers.openai_singleton import get_openai_client
-from backend.modules.llm.llm_exceptions import LLMAPIError, RateLimitError
+from backend.handler.llm.providers.openai_singleton import get_openai_client
+from backend.handler.llm.llm_exceptions import LLMAPIError, RateLimitError
 import json
 import asyncio
 import time

@@ -7,7 +7,7 @@ import uuid
 import os
 from backend.database.persistent.config import SessionLocal
 from backend.database.persistent.models import User, UserRole
-from backend.api.dependencies.auth import hash_password
+from backend.utils.password_utils import hash_password
 
 # Create admin user if no users exist – for development purposes
 @asynccontextmanager

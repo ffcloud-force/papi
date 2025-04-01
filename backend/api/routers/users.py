@@ -1,18 +1,24 @@
-import uuid
+from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database.persistent.models import User
 from backend.database.persistent.config import get_db
 from backend.api.schemas.user import UserCreate, UserUpdate, UserDelete, UserResponse
-from backend.api.dependencies.auth import hash_password, verify_password, require_resource_access, admin_only, check_user_access, ResourceType
+from backend.api.dependencies.auth import require_resource_access, admin_only, check_user_access, ResourceType
+from backend.utils.password_utils import hash_password, verify_password
 from sqlalchemy.exc import IntegrityError
+from backend.services.database_service import DatabaseService
+from backend.api.dependencies.database_service import get_database_service
 
 router = APIRouter()
+
+current_user_resource_access_dependency = Annotated[User, Depends(require_resource_access(ResourceType.USER))]
+user_service_dependency = Annotated[DatabaseService, Depends(get_database_service)]
 
 @router.get("/{user_id}")
 async def get_user(
     user_id: str,
-    _: User = Depends(admin_only),
+    # _: User = Depends(admin_only), # @TODO: REMOVE BEFORE PRODUCTION
     db: Session = Depends(get_db)
 ):
     """
@@ -26,44 +32,35 @@ async def get_user(
 
 @router.get("/")
 async def list_users(
-    # _: User = Depends(admin_only),  # Admin-only endpoint
+    # _: User = Depends(admin_only),  # @TODO: REMOVE BEFORE PRODUCTION
     db: Session = Depends(get_db)
 ):
     return db.query(User).all()
 
-@router.post("/")
+@router.post("/", response_model=UserResponse)
 async def create_user(
-    user: UserCreate, 
-    db: Session = Depends(get_db)
+    user: UserCreate,
+    db_service: DatabaseService = Depends(get_database_service)
 ):
-    #check if user already exists
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Ein Nutzer mit dieser E-Mail-Adresse existiert bereits.")
-
-    #hash the password with the salt
-    hashed_password = hash_password(user.password)
-
-    #create new user
-    new_user = User(
-        id=str(uuid.uuid4()),
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        password_hash=hashed_password,
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    #@TODO: send email to user to validate email
-    return new_user
+    try:
+        new_user = db_service.create_user(user)
+        return UserResponse.model_validate(new_user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, 
+            detail="Ein Nutzer mit dieser E-Mail-Adresse existiert bereits."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Ein Fehler ist aufgetreten"
+        )
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
     user_update: UserUpdate,
-    current_user: User = Depends(require_resource_access(ResourceType.USER)),
-    db: Session = Depends(get_db)
+    current_user: current_user_resource_access_dependency,
+    db_service: user_service_dependency
 ):
     #@TODO: NEEDS WORK, NOT A PRIO
     # If updating sensitive fields (email/password), require current password
@@ -96,16 +93,8 @@ async def update_user(
     # Update user in database
     for key, value in update_data.items():
         setattr(current_user, key, value)
-
-    try:
-        db.commit()
-        db.refresh(current_user)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="Email bereits registriert"
-        )
+    
+    db_service.update_user(current_user.id, update_data)
 
     # Return updated user data
     return UserResponse.from_orm(current_user)

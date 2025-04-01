@@ -247,39 +247,39 @@ EXAM_PROMPTS = {
                 "- Differenzialdiagnostik zwischen Konflikt- und Strukturpathologie\n\n"
             )
         },
-        {
-            "id": "structure_defense_mechanisms",
-            "type": "complex",
-            "specialization": "tiefenpsychologisch",
-            "category": "structure",
-            "subcategory": "defense_mechanisms",
-            "prompt": (
-                "Abwehrmechanismen und deren diagnostische Einordnung: "
-                "- Hierarchie der Abwehrmechanismen nach Anna Freud "
-                "- Reife, neurotische und unreife/primitive Abwehrmechanismen "
-                "- Strukturspezifische Abwehrmuster: Spaltung (niedrig), Idealisierung/Entwertung (mittel), Verdrängung (hoch), Sublimierung (reif) "
-                "- Funktion der Abwehr zum Schutz des psychischen Gleichgewichts "
-                "- Abwehranalyse als therapeutisches Instrument "
-                "- Veränderung der Abwehrmechanismen im therapeutischen Prozess\n\n"
-            )
-        },
-        {
-            "id": "structure_developmental_aspects",
-            "type": "complex",
-            "specialization": "tiefenpsychologisch",
-            "category": "structure",
-            "subcategory": "developmental_aspects",
-            "prompt": (
-                "Entwicklungspsychologische Aspekte und deren klinische Relevanz: "
-                "- Psychosexuelle Entwicklungsphasen nach Freud "
-                "- Objektbeziehungsentwicklung nach Mahler (Symbiose, Separation-Individuation) "
-                "- Frühe Entwicklung des Selbst nach Stern und Kohut "
-                "- Bedeutung der Entwicklungslinien nach Anna Freud "
-                "- Container-Contained-Konzept nach Bion "
-                "- Entwicklung der Mentalisierungsfähigkeit "
-                "- Entwicklungstrauma und dessen Auswirkungen auf die Persönlichkeitsstruktur\n\n"
-            )
-        }
+        # {
+        #     "id": "structure_defense_mechanisms",
+        #     "type": "complex",
+        #     "specialization": "tiefenpsychologisch",
+        #     "category": "structure",
+        #     "subcategory": "defense_mechanisms",
+        #     "prompt": (
+        #         "Abwehrmechanismen und deren diagnostische Einordnung: "
+        #         "- Hierarchie der Abwehrmechanismen nach Anna Freud "
+        #         "- Reife, neurotische und unreife/primitive Abwehrmechanismen "
+        #         "- Strukturspezifische Abwehrmuster: Spaltung (niedrig), Idealisierung/Entwertung (mittel), Verdrängung (hoch), Sublimierung (reif) "
+        #         "- Funktion der Abwehr zum Schutz des psychischen Gleichgewichts "
+        #         "- Abwehranalyse als therapeutisches Instrument "
+        #         "- Veränderung der Abwehrmechanismen im therapeutischen Prozess\n\n"
+        #     )
+        # },
+        # {
+        #     "id": "structure_developmental_aspects",
+        #     "type": "complex",
+        #     "specialization": "tiefenpsychologisch",
+        #     "category": "structure",
+        #     "subcategory": "developmental_aspects",
+        #     "prompt": (
+        #         "Entwicklungspsychologische Aspekte und deren klinische Relevanz: "
+        #         "- Psychosexuelle Entwicklungsphasen nach Freud "
+        #         "- Objektbeziehungsentwicklung nach Mahler (Symbiose, Separation-Individuation) "
+        #         "- Frühe Entwicklung des Selbst nach Stern und Kohut "
+        #         "- Bedeutung der Entwicklungslinien nach Anna Freud "
+        #         "- Container-Contained-Konzept nach Bion "
+        #         "- Entwicklung der Mentalisierungsfähigkeit "
+        #         "- Entwicklungstrauma und dessen Auswirkungen auf die Persönlichkeitsstruktur\n\n"
+        #     )
+        # }
     ],
     
     "output_format_questions": (
