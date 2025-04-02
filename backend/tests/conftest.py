@@ -2,47 +2,34 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
-from backend.database.persistent.config import Base
+from backend.database.persistent.config import Base, get_db
 from backend.database.persistent.models import User
 from backend.api.main import app
 from backend.api.dependencies.auth import create_access_token
-from backend.api.dependencies.auth import hash_password
+from backend.utils.password_utils import hash_password
 from backend.config.environment import get_environment, Environment
 
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from backend.database.persistent.config import Base, get_db
-from backend.api.main import app
-
-# Use an in-memory SQLite database for testing
-TEST_DATABASE_URL = "sqlite:///./test.db"
-
-@pytest.fixture(autouse=True)
-def setup_and_teardown():
-    """Fixture to handle app dependency overrides for all tests"""
-    app.dependency_overrides = {}  # Clear all overrides at start
-    yield
-    app.dependency_overrides = {}  # Clear all overrides at end
-
-@pytest.fixture
-def test_db():
-    """Create a fresh test database for each test"""
+@pytest.fixture(scope="session")
+def test_engine():
+    """Create a test engine for each test session"""
     if get_environment() == Environment.TESTING:
-        # Use PostgreSQL for CI/CD testing
         DATABASE_URL = f"postgresql://test_user:test_password@localhost:5432/test_db"
         connect_args = {}
     else:
-        # Use SQLite for local development testing
         DATABASE_URL = "sqlite:///./test.db"
         connect_args = {"check_same_thread": False}
     
     engine = create_engine(DATABASE_URL, connect_args=connect_args)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    yield engine
+
+@pytest.fixture
+def test_db(test_engine):
+    """Create a fresh test database for each test"""
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     
     # Create tables
-    Base.metadata.drop_all(bind=engine)  # Drop all tables first
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.drop_all(bind=test_engine)  # Drop all tables first
+    Base.metadata.create_all(bind=test_engine)
     
     # Override the dependency
     def override_get_db():
@@ -60,7 +47,8 @@ def test_db():
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=test_engine)
+        app.dependency_overrides = {}
 
 @pytest.fixture
 def client(test_db):
@@ -91,6 +79,11 @@ def test_user(test_db):
 @pytest.fixture
 def test_admin(test_db):
     """Create a test admin user"""
+    existing_admin = test_db.query(User).filter(User.email == "admin@example.com").first()
+    if existing_admin:
+        test_db.delete(existing_admin)
+        test_db.commit()
+    
     admin = User(
         email="admin@example.com",
         first_name="Admin",

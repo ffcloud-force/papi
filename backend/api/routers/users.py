@@ -1,30 +1,22 @@
-from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from backend.database.persistent.models import User
-from backend.database.persistent.config import get_db
 from backend.api.schemas.user import UserCreate, UserUpdate, UserDelete, UserResponse
-from backend.api.dependencies.auth import require_resource_access, admin_only, check_user_access, ResourceType
 from backend.utils.password_utils import hash_password, verify_password
-from sqlalchemy.exc import IntegrityError
-from backend.services.database_service import DatabaseService
-from backend.api.dependencies.database_service import get_database_service
+from backend.api.dependencies.database_service import get_database_service_dependency
+from backend.api.dependencies.auth import current_user_resource_access_dependency
 
 router = APIRouter()
-
-current_user_resource_access_dependency = Annotated[User, Depends(require_resource_access(ResourceType.USER))]
-user_service_dependency = Annotated[DatabaseService, Depends(get_database_service)]
 
 @router.get("/{user_id}")
 async def get_user(
     user_id: str,
     # _: User = Depends(admin_only), # @TODO: REMOVE BEFORE PRODUCTION
-    db: Session = Depends(get_db)
+    db_service: get_database_service_dependency
 ):
     """
     Admin only endpoint, normal users use the /me endpoint
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db_service.get_user_by_id(user_id)
 
     if user is None:
         raise HTTPException(status_code=404, detail="Der angegebene Nutzer wurde nicht gefunden.")
@@ -33,14 +25,14 @@ async def get_user(
 @router.get("/")
 async def list_users(
     # _: User = Depends(admin_only),  # @TODO: REMOVE BEFORE PRODUCTION
-    db: Session = Depends(get_db)
+    db_service: get_database_service_dependency
 ):
-    return db.query(User).all()
+    return db_service.get_all_users()
 
 @router.post("/", response_model=UserResponse)
 async def create_user(
     user: UserCreate,
-    db_service: DatabaseService = Depends(get_database_service)
+    db_service: get_database_service_dependency
 ):
     try:
         new_user = db_service.create_user(user)
@@ -60,7 +52,7 @@ async def create_user(
 async def update_user(
     user_update: UserUpdate,
     current_user: current_user_resource_access_dependency,
-    db_service: user_service_dependency
+    db_service: get_database_service_dependency
 ):
     #@TODO: NEEDS WORK, NOT A PRIO
     # If updating sensitive fields (email/password), require current password
@@ -102,11 +94,11 @@ async def update_user(
 
 @router.delete("/{user_id}")
 async def delete_user(
-    current_user: User = Depends(require_resource_access(ResourceType.USER)),
-    db: Session = Depends(get_db)
+    db_service: get_database_service_dependency,
+    current_user: current_user_resource_access_dependency
 ):
-    existing_user = db.query(User).filter(User.id == current_user.id).first()
+    existing_user = db_service.get_user_by_id(current_user.id)
     if existing_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(existing_user)
-    db.commit()
+    db_service.delete_user(existing_user.id)
+    return("User deleted successfully")

@@ -1,8 +1,11 @@
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from backend.database.persistent.config import get_db
 from backend.services.database_service import DatabaseService
+from typing import Annotated
 
-def get_database_service():
-    db_service = DatabaseService()  # Creates service with business logic
-    try:
-        yield db_service           # Provides the service layer to the endpoint
-    finally:
-        db_service.db.close()     # Closes the underlying database session
+def get_database_service(db: Session = Depends(get_db)) -> DatabaseService:
+    service = DatabaseService(db)
+    return service
+
+get_database_service_dependency = Annotated[DatabaseService, Depends(get_database_service)]

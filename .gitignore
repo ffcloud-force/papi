@@ -21,3 +21,5 @@ backend/data/example_cases
 *.db
 
 *.txt
+
+.coverage

@@ -6,8 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from backend.database.persistent.models import User, Case
-from backend.services.database_service import DatabaseService
-from backend.api.dependencies.database_service import get_database_service
+from backend.api.dependencies.database_service import get_database_service_dependency
 import inspect
 from backend.config.settings import (
     JWT_SECRET_KEY,
@@ -18,11 +17,9 @@ from backend.config.settings import (
 # OAuth2 setup
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
-db_service_dependency = Annotated[DatabaseService, Depends(get_database_service)]
-
 def get_current_user(
-        db_service: db_service_dependency,
-        token: str = Depends(oauth2_scheme)
+    db_service: get_database_service_dependency,
+    token: str = Depends(oauth2_scheme)
 ): 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -95,7 +92,7 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
 
     def check_access(
         current_user: current_user_dependency,
-        db_service: db_service_dependency,
+        db_service: get_database_service_dependency,
         **path_params  # This will receive all path parameters
     ) -> User:
         # Get the ID from the correct path parameter
@@ -138,3 +135,5 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
     )
     
     return check_access
+
+current_user_resource_access_dependency = Annotated[User, Depends(require_resource_access(ResourceType.USER))]

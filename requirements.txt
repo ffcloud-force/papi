@@ -13,6 +13,7 @@ cffi==1.17.1
 charset-normalizer==3.4.1
 click==8.1.8
 coloredlogs==15.0.1
+coverage==7.8.0
 cryptography==44.0.2
 dataclasses-json==0.6.7
 distro==1.9.0
@@ -54,7 +55,7 @@ numpy==1.26.4
 openai==1.66.2
 orjson==3.10.15
 packaging==24.2
--e git+https://github.com/ffcloud-force/papi.git@d670bfb7273d42408db7ad860ab0038b28944674#egg=papi
+-e git+https://github.com/ffcloud-force/papi.git@6c598a77ccf85188cfeb24b7e3f9cd5f6cd5e375#egg=papi
 pluggy==1.5.0
 propcache==0.3.0
 pyasn1==0.4.8
@@ -66,6 +67,9 @@ PyJWT==2.10.1
 pypdf==5.4.0
 pytest==8.3.5
 pytest-asyncio==0.25.3
+pytest-cov==6.1.0
+pytest-cover==3.0.0
+pytest-coverage==0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-jose==3.4.0

@@ -1,18 +1,18 @@
-from backend.database.persistent.config import SessionLocal
 from backend.database.persistent.models import User, Case, ExamQuestion, QuestionSet
 from backend.api.schemas.qanda import QuestionRetrieve
 from backend.handler.database.database_handler import DatabaseHandler
 from backend.api.schemas.case import CaseCreate
 from backend.api.schemas.user import UserCreate
 from backend.database.persistent.models import CaseStatus
-from pydantic import ValidationError
 from backend.utils.password_utils import hash_password
+from pydantic import ValidationError
+from sqlalchemy.orm import Session
 import uuid
 
 class DatabaseService:
-    def __init__(self):
-        self.db = SessionLocal()
-        self.db_handler = DatabaseHandler()
+    def __init__(self, db: Session):
+        self.db = db
+        self.db_handler = DatabaseHandler(db)
 
     # User-specific operations
     def create_user(self, user_data: UserCreate):
@@ -47,6 +47,10 @@ class DatabaseService:
         # TODO: Add validation
         return self.db_handler._get_user_by_email(email)
 
+    def get_all_users(self):
+        # TODO: Add validation
+        return self.db_handler._get_all_users()
+
     def update_user_last_login(self, user_id):
         # TODO: Add validation
         return self.db_handler._update_user_last_login(user_id)
@@ -54,6 +58,10 @@ class DatabaseService:
     def update_user(self, user_id, update_data):
         # TODO: Add validation
         return self.db_handler._update_user(user_id, update_data)
+
+    def delete_user(self, user_id):
+        # TODO: Add validation
+        return self.db_handler._delete_user(user_id)
 
     # Case-specific operations
     def create_case(self, filename, user_id, s3_key, case_id, case_content, case_number):

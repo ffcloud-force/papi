@@ -3,9 +3,11 @@ from backend.database.persistent.models import QuestionSet, ExamQuestion, User, 
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
+from sqlalchemy.orm import Session
+
 class DatabaseHandler:
-    def __init__(self):
-        self.db = next(get_db())
+    def __init__(self, db: Session):
+        self.db = db
 
     # CREATE
     def _create_user(self, user_data):
@@ -50,6 +52,9 @@ class DatabaseHandler:
     
     def _get_user_by_email(self, email) -> User | None:
         return self.db.query(User).filter(User.email == email).first()
+
+    def _get_all_users(self) -> list[User] | None:
+        return self.db.query(User).all()
 
     def _get_case_by_id(self, case_id) -> Case | None:
         return self.db.query(Case).filter(Case.id == case_id).first()
@@ -138,3 +143,11 @@ class DatabaseHandler:
             self.db.commit()
         else:
             raise ValueError(f"Case with id {case_id} not found")
+
+    def _delete_user(self, user_id: str) -> None:
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if user:
+            self.db.delete(user)
+            self.db.commit()
+        else:
+            raise ValueError(f"User with id {user_id} not found")

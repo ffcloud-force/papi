@@ -52,6 +52,7 @@ class User(Base):
     cases = relationship("Case", back_populates="owner", cascade="all, delete-orphan")
     question_sets = relationship("QuestionSet", back_populates="user", cascade="all, delete-orphan")
     questions = relationship("ExamQuestion", back_populates="user", cascade="all, delete-orphan")  # New direct relationship
+    exam_answers = relationship("ExamQuestionAnswer", back_populates="user", cascade="all, delete-orphan")
 
 class CaseStatus(Enum):
     UPLOADED = "uploaded"
@@ -95,6 +96,7 @@ class ExamQuestion(Base):
     general_type = Column(String(50), nullable=False)
     specific_type = Column(String(50), nullable=True)
     answer = Column(Text, nullable=True)
+    is_answered = Column(Boolean, default=False)
     
     @property
     def keywords(self):
@@ -110,8 +112,9 @@ class ExamQuestion(Base):
             self._keywords = value
     
     # All relationships
-    question_set = relationship("QuestionSet", back_populates="questions")
     user = relationship("User", back_populates="questions")  # New relationship to user
+    question_set = relationship("QuestionSet", back_populates="questions")
+    answers = relationship("ExamQuestionAnswer", back_populates="question", cascade="all, delete-orphan")
 
 # Question set model
 class QuestionSet(Base):
@@ -128,11 +131,44 @@ class QuestionSet(Base):
     user = relationship("User", back_populates="question_sets")
     questions = relationship("ExamQuestion", back_populates="question_set", cascade="all, delete-orphan")
 
-# Chat History for a specific Exam Question
-class ExamQuestionChat(Base):
-    __tablename__ = "exam_question_chats"
+class AnswerStatus(Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    REVIEWED = "reviewed"
+    FINAL = "final"
+
+class MessageRole(Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+class ExamQuestionAnswer(Base):
+    __tablename__ = "exam_question_answers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     question_id = Column(Integer, ForeignKey("exam_questions.id", ondelete="CASCADE"), nullable=False)
-    chat = Column(JSON, nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    current_answer = Column(Text, nullable=False)  # The latest version of the answer
+    status = Column(SQLAlchemyEnum(AnswerStatus, name="answer_status_enum", create_type=False), 
+                   default=AnswerStatus.DRAFT, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    question = relationship("ExamQuestion", back_populates="answers")
+    user = relationship("User", back_populates="exam_answers")
+    discussion_messages = relationship("AnswerDiscussion", back_populates="answer", cascade="all, delete-orphan", order_by="AnswerDiscussion.created_at")
+
+class AnswerDiscussion(Base):
+    __tablename__ = "answer_discussions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    answer_id = Column(Integer, ForeignKey("exam_question_answers.id", ondelete="CASCADE"), nullable=False)
+    role = Column(SQLAlchemyEnum(MessageRole, name="message_role_enum", create_type=False), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # If this message includes a new version of the answer
+    is_answer_update = Column(Boolean, default=False)
+    
+    # Relationship
+    answer = relationship("ExamQuestionAnswer", back_populates="discussion_messages")
