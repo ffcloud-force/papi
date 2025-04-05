@@ -5,11 +5,17 @@ from backend.services.llm_service import LLMService
 from backend.database.persistent.models import CaseStatus
 
 class CaseService:
-    def __init__(self):
-        self.storage_service = StorageService()
-        self.llm_service = LLMService()
-        self.database_service = DatabaseService()
-        self.file_converter = FileConverter()
+    def __init__(
+            self, 
+            storage_service: StorageService, 
+            llm_service: LLMService, 
+            database_service: DatabaseService, 
+            file_converter: FileConverter
+        ):
+        self.storage_service = storage_service
+        self.llm_service = llm_service
+        self.database_service = database_service
+        self.file_converter = file_converter
 
     async def process_case_async_and_store_case_and_qanda(self, file_data: bytes, filename: str, user_id:str, case_number:int=1):
         """

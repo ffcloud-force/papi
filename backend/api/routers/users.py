@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
-from backend.database.persistent.models import User
-from backend.api.schemas.user import UserCreate, UserUpdate, UserDelete, UserResponse
+from fastapi import APIRouter, HTTPException
+from backend.api.schemas.user import UserCreate, UserUpdate, UserResponse
 from backend.utils.password_utils import hash_password, verify_password
-from backend.api.dependencies.database_service import get_database_service_dependency
+from backend.api.dependencies.database import get_database_service_dependency
 from backend.api.dependencies.auth import current_user_resource_access_dependency
 
 router = APIRouter()
@@ -38,11 +37,13 @@ async def create_user(
         new_user = db_service.create_user(user)
         return UserResponse.model_validate(new_user)
     except ValueError as e:
+        print(f'Error creating user: {e}')
         raise HTTPException(
             status_code=400, 
             detail="Ein Nutzer mit dieser E-Mail-Adresse existiert bereits."
         )
     except Exception as e:
+        print(f'Error creating user: {e}')
         raise HTTPException(
             status_code=500,
             detail="Ein Fehler ist aufgetreten"
@@ -66,7 +67,7 @@ async def update_user(
         # Verify current password
         try:
             verify_password(user_update.current_password, current_user.password_hash)
-        except:
+        except Exception:
             raise HTTPException(
                 status_code=401,
                 detail="Aktuelles Passwort ist falsch"

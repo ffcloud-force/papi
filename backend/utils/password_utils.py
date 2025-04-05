@@ -23,5 +23,7 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed_password: str) -> bool:
     try:
         return ph.verify(hashed_password, password)
+    except VerifyMismatchError:
+        return False
     except Exception as e:
-        raise VerifyMismatchError("Password mismatch") 
+        raise e

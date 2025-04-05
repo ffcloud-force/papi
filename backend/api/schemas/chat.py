@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 
-class CreateExamQuestionChat(BaseModel):
+class CreateChatSession(BaseModel):
     model_config = ConfigDict(strict=True)
-    question_id: int
-    chat: list[dict]
+    user_id: str
+    topic: str
 
 # Chat message schema
 class ChatMessage(BaseModel):

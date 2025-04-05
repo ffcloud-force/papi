@@ -13,7 +13,7 @@ from backend.config.environment import get_environment, Environment
 def test_engine():
     """Create a test engine for each test session"""
     if get_environment() == Environment.TESTING:
-        DATABASE_URL = f"postgresql://test_user:test_password@localhost:5432/test_db"
+        DATABASE_URL = "postgresql://test_user:test_password@localhost:5432/test_db"
         connect_args = {}
     else:
         DATABASE_URL = "sqlite:///./test.db"

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from backend.services.case_service import CaseService
 from backend.api.dependencies.auth import get_current_user, require_resource_access
-from backend.database.persistent.models import User, Case, QuestionSet, CaseStatus
+from backend.database.persistent.models import User, CaseStatus
 from backend.api.dependencies.auth import ResourceType
-from backend.api.dependencies.case_service import get_case_service
+from backend.api.dependencies.case import get_case_service
 from typing import Annotated
 
 router = APIRouter()

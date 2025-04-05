@@ -6,13 +6,14 @@ from backend.api.schemas.user import UserCreate
 from backend.database.persistent.models import CaseStatus
 from backend.utils.password_utils import hash_password
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 import uuid
 
 class DatabaseService:
-    def __init__(self, db: Session):
-        self.db = db
-        self.db_handler = DatabaseHandler(db)
+    def __init__(
+        self, 
+        db_handler: DatabaseHandler
+    ):
+        self.db_handler = db_handler
 
     # User-specific operations
     def create_user(self, user_data: UserCreate):
@@ -121,7 +122,12 @@ class DatabaseService:
         return self.db_handler._delete_case(case_id)
 
     # Question-specific operations
-    def create_questions_and_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
+    def create_questions_and_set(
+            self, 
+            questions: dict[str, list[ExamQuestion]], 
+            user_id: int, 
+            case_id: int
+        ) -> tuple[QuestionSet, list[ExamQuestion]]:
         """
         Create question sets for all topics in a single transaction.
         Each topic gets its own QuestionSet.
@@ -142,21 +148,17 @@ class DatabaseService:
                     case_id=case_id,
                     topic=topic
                 )
-                question_set = self.db_handler._create_question_set(question_set)
                 
                 # Associate questions with this set
                 for question in question_list:
                     question.question_set_id = question_set.id
-                    question = self.db_handler._create_question(question)
                 
                 question_sets[topic] = question_set
             
-            # Commit everything at once
-            self.db.commit()
-            return question_sets
+            question_set, questions = self.db_handler._create_question_set_and_questions(question_set, question_list)
+            return question_set, questions
             
         except Exception as e:
-            self.db.rollback()
             print(f"Error creating question sets: {str(e)}")
             raise
 

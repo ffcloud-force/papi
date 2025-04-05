@@ -9,8 +9,11 @@ import re
 class LLMHandler:
     """Handles low-level LLM operations and data access"""
     
-    def __init__(self):
-        self.llm = get_openai_client()
+    def __init__(
+        self, 
+        llm: get_openai_client
+    ):
+        self.llm = llm
     
     def _get_completion(self, message, json_mode=False):
         """Get a completion from the LLM (synchronous)"""

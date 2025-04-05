@@ -18,10 +18,16 @@ import asyncio
 class LLMService:
     """Service layer for LLM assistant operations"""
     
-    def __init__(self):
-        self.llm_handler = LLMHandler()
-        self.database_service = DatabaseService()
-        self.file_converter = FileConverter()
+    def __init__(
+            self, 
+            llm_handler: LLMHandler, 
+            database_service: DatabaseService, 
+            file_converter: FileConverter
+        ):
+        self.llm_handler = llm_handler
+        self.database_service = database_service
+        self.file_converter = file_converter
+        
         self.case_text = None
     
     #PUBLIC METHODS

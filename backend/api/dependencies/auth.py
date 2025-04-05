@@ -1,12 +1,11 @@
 from enum import Enum
 from typing import Callable, Annotated
 from jose import jwt, JWTError
-from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
-from backend.database.persistent.models import User, Case
-from backend.api.dependencies.database_service import get_database_service_dependency
+from backend.database.persistent.models import User
+from backend.api.dependencies.database import get_database_service_dependency
 import inspect
 from backend.config.settings import (
     JWT_SECRET_KEY,

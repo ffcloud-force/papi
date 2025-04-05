@@ -1,8 +1,7 @@
 
-from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from backend.api.dependencies.auth import current_user_dependency
-from backend.api.dependencies.chat_service import chat_service_dependency
+from backend.api.dependencies.chat import chat_service_dependency
 
 router = APIRouter()
 

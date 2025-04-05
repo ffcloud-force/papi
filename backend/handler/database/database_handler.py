@@ -1,4 +1,3 @@
-from backend.database.persistent.config import get_db
 from backend.database.persistent.models import QuestionSet, ExamQuestion, User, Case, CaseStatus
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,7 +5,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 class DatabaseHandler:
-    def __init__(self, db: Session):
+    def __init__(
+        self,
+        db: Session
+    ):
         self.db = db
 
     # CREATE
@@ -42,6 +44,22 @@ class DatabaseHandler:
             self.db.add(question)
             self.db.commit()
             return question
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e
+
+    def _create_question_set_and_questions(
+            self, 
+            question_set: QuestionSet, 
+            questions: list[ExamQuestion]
+        ) -> tuple[QuestionSet, list[ExamQuestion]]:
+        try:
+            self.db.add(question_set)
+            for question in questions:
+                question.question_set_id = question_set.id
+                self.db.add(question)
+            self.db.commit()
+            return question_set, questions
         except SQLAlchemyError as e:
             self.db.rollback()
             raise e

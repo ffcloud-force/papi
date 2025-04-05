@@ -33,7 +33,8 @@ class Question(BaseModel):
             if keywords.startswith('[') and keywords.endswith(']'):
                 try:
                     return json.loads(keywords)
-                except:
+                except Exception as e:
+                    print(f'Error parsing keywords: {e}, trying to parse as comma-separated')
                     # If JSON parsing fails, treat as comma-separated
                     return [k.strip() for k in keywords.split(',')]
             # Simple comma-separated string

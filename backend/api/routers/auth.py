@@ -1,16 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from argon2.exceptions import VerifyMismatchError
-from datetime import datetime
-from backend.database.persistent.config import get_db
 from backend.database.persistent.models import User
-from backend.api.schemas.auth import LoginResponse, Token
 from backend.api.schemas.user import UserResponse
-from backend.api.dependencies.auth import get_current_user, create_access_token, check_user_access
+from backend.api.dependencies.auth import get_current_user, create_access_token
 from backend.utils.password_utils import verify_password
 from backend.services.database_service import DatabaseService
-from backend.api.dependencies.database_service import get_database_service
+from backend.api.dependencies.database import get_database_service
 
 router = APIRouter()
 
