@@ -8,7 +8,9 @@ from typing import Annotated
 def get_database_handler(db: Session = Depends(get_db)) -> DatabaseHandler:
     return DatabaseHandler(db)
 
-def get_database_service(db_handler: DatabaseHandler = Depends(get_database_handler)) -> DatabaseService:
+def get_database_service(
+    db_handler: Annotated[DatabaseHandler, Depends(get_database_handler)]
+) -> DatabaseService:
     return DatabaseService(db_handler)
 
 get_database_handler_dependency = Annotated[DatabaseHandler, Depends(get_database_handler)]

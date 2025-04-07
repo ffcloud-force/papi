@@ -7,19 +7,16 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, JSON
 from backend.database.persistent.config import Base
 
-
 # For SQLite compatibility with JSON
 class JSONType(TypeDecorator):
     impl = Text
     
     def process_bind_param(self, value, dialect):
-        import json
         if value is not None:
             value = json.dumps(value)
         return value
         
     def process_result_value(self, value, dialect):
-        import json
         if value is not None:
             value = json.loads(value)
         return value
@@ -50,9 +47,20 @@ class User(Base):
     
     # All direct relationships
     cases = relationship("Case", back_populates="owner", cascade="all, delete-orphan")
-    question_sets = relationship("QuestionSet", back_populates="user", cascade="all, delete-orphan")
-    questions = relationship("ExamQuestion", back_populates="user", cascade="all, delete-orphan")  # New direct relationship
-    exam_answers = relationship("ExamQuestionAnswer", back_populates="user", cascade="all, delete-orphan")
+
+
+# class Prompt(Base):
+#     """
+#     Prompts are the categories of questions that the exam will cover.
+#     """
+#     __tablename__ = "prompts"
+
+#     id = Column(Integer, primary_key=True, autoincrement=True)
+#     prompt = Column(Text, nullable=False)
+#     specialization = Column(String(50), nullable=False)
+#     general_type = Column(String(50), nullable=False)
+#     specific_type = Column(String(50), nullable=True)
+
 
 class CaseStatus(Enum):
     UPLOADED = "uploaded"
@@ -60,10 +68,12 @@ class CaseStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
-# Case model
 class Case(Base):
+    """
+    Cases are the documents that the user uploads.
+    """
     __tablename__ = "cases"
-    
+
     id = Column(String, primary_key=True, index=True)
     filename = Column(String, nullable=False) # original filename
     storage_path = Column(String, nullable=False) # path to the document in the cloud storage
@@ -74,28 +84,48 @@ class Case(Base):
     case_number = Column(Integer)  # 1 or 2
     case_metadata = Column(JSON) # metadata of the document
     content_text = Column(Text) # extracted text content of the document
-    
-    # Relationship to user
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
-    owner = relationship("User", back_populates="cases")
     
-    # Add relationship to question sets
+    # Relationships
+    owner = relationship("User", back_populates="cases")
     question_sets = relationship("QuestionSet", back_populates="case", cascade="all, delete-orphan")
 
+
+class QuestionSet(Base):
+    """
+    Question Sets group the exam questions of a specific topic for a case.
+    """
+    __tablename__ = "question_sets"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    case_id = Column(String, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    topic = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # Relationships
+    case = relationship("Case", back_populates="question_sets")
+    questions = relationship("Question", back_populates="question_set", cascade="all, delete-orphan")
+
 # Exam question model
-class ExamQuestion(Base):
-    __tablename__ = "exam_questions"
+class Question(Base):
+    """
+    Exam questions that the exam will cover.
+    """
+    __tablename__ = "questions"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     question_set_id = Column(Integer, ForeignKey("question_sets.id", ondelete="CASCADE"))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # Add direct user link
     question = Column(Text, nullable=False)
     context = Column(Text, nullable=True)
     difficulty = Column(String(10), nullable=False)
     _keywords = Column("keywords", Text, nullable=False)
     general_type = Column(String(50), nullable=False)
     specific_type = Column(String(50), nullable=True)
-    answer = Column(Text, nullable=True)
+    
+    # LLM_Answer is part of the Question Object
+    llm_answer = Column(Text, nullable=True)
+    
+    # should be true when there is a user answer with status final 
     is_answered = Column(Boolean, default=False)
     
     @property
@@ -111,64 +141,83 @@ class ExamQuestion(Base):
         else:
             self._keywords = value
     
-    # All relationships
-    user = relationship("User", back_populates="questions")  # New relationship to user
+    # Relationships
     question_set = relationship("QuestionSet", back_populates="questions")
-    answers = relationship("ExamQuestionAnswer", back_populates="question", cascade="all, delete-orphan")
+    chat_session = relationship("ChatSession", back_populates="question", uselist=False)
+    user_answer = relationship("UserAnswer", back_populates="question")
 
-# Question set model
-class QuestionSet(Base):
-    __tablename__ = "question_sets"
-    
+class ChatSession(Base):
+    """
+    ChatSession is a collection of AnswerDiscussion objects for a case.
+    """
+    __tablename__ = "chat_sessions"
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     case_id = Column(String, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)  # Keep direct user link
-    topic = Column(String, nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    last_message_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Relationships
+    question = relationship("Question", back_populates="chat_session")
+    answer_discussion = relationship("AnswerDiscussion", back_populates="chat_session")
+
+
+class AnswerDiscussion(Base):
+    """
+    AnswerDiscussion is a collection of messages for a specific question.
+    """
+    __tablename__ = "answer_discussions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_session_id = Column(Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     
-    # All relationships
-    case = relationship("Case", back_populates="question_sets")
-    user = relationship("User", back_populates="question_sets")
-    questions = relationship("ExamQuestion", back_populates="question_set", cascade="all, delete-orphan")
+    # Relationships
+    chat_session = relationship("ChatSession", back_populates="answer_discussion")
+    messages = relationship("Message", back_populates="answer_discussion")
 
-class AnswerStatus(Enum):
-    DRAFT = "draft"
-    SUBMITTED = "submitted"
-    REVIEWED = "reviewed"
-    FINAL = "final"
+    user_answer = relationship("UserAnswer", back_populates="answer_discussion")
+
 
 class MessageRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
 
-class ExamQuestionAnswer(Base):
-    __tablename__ = "exam_question_answers"
+class Message(Base):
+    __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    question_id = Column(Integer, ForeignKey("exam_questions.id", ondelete="CASCADE"), nullable=False)
+    answer_discussion_id = Column(Integer, ForeignKey("answer_discussions.id", ondelete="CASCADE"), nullable=False)
+    role = Column(SQLAlchemyEnum(MessageRole, name="message_role_enum", create_type=False), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # Relationships
+    answer_discussion = relationship("AnswerDiscussion", back_populates="messages")
+
+class AnswerStatus(Enum):
+    DISCUSSION = "discussion"
+    FINAL = "final"
+
+class UserAnswer(Base):
+    __tablename__ = "user_answers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    current_answer = Column(Text, nullable=False)  # The latest version of the answer
-    status = Column(SQLAlchemyEnum(AnswerStatus, name="answer_status_enum", create_type=False), 
-                   default=AnswerStatus.DRAFT, nullable=False)
+    
+    condensed_answer = Column(Text, nullable=False)  # condensed answer from the discussion
+    status = Column(SQLAlchemyEnum(AnswerStatus, name="answer_status_enum", create_type=False), default=AnswerStatus.DISCUSSION, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     # Relationships
-    question = relationship("ExamQuestion", back_populates="answers")
-    user = relationship("User", back_populates="exam_answers")
-    discussion_messages = relationship("AnswerDiscussion", back_populates="answer", cascade="all, delete-orphan", order_by="AnswerDiscussion.created_at")
-
-class AnswerDiscussion(Base):
-    __tablename__ = "answer_discussions"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    answer_id = Column(Integer, ForeignKey("exam_question_answers.id", ondelete="CASCADE"), nullable=False)
-    role = Column(SQLAlchemyEnum(MessageRole, name="message_role_enum", create_type=False), nullable=False)
-    content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    answer_discussion_id = Column(Integer, ForeignKey("answer_discussions.id", ondelete="CASCADE"), nullable=False)
+    answer_discussion = relationship("AnswerDiscussion", back_populates="user_answer")
     
-    # If this message includes a new version of the answer
-    is_answer_update = Column(Boolean, default=False)
-    
-    # Relationship
-    answer = relationship("ExamQuestionAnswer", back_populates="discussion_messages")
+    # LLM_Answer is part of the Question Object
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    question = relationship("Question", back_populates="user_answer")

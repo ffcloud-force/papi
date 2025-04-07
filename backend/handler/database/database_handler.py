@@ -1,4 +1,4 @@
-from backend.database.persistent.models import QuestionSet, ExamQuestion, User, Case, CaseStatus
+from backend.database.persistent.models import QuestionSet, Question, User, Case, CaseStatus
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
@@ -39,7 +39,7 @@ class DatabaseHandler:
             self.db.rollback()
             raise e
 
-    def _create_question(self, question: ExamQuestion) -> ExamQuestion:
+    def _create_question(self, question: Question) -> Question:
         try:
             self.db.add(question)
             self.db.commit()
@@ -51,8 +51,8 @@ class DatabaseHandler:
     def _create_question_set_and_questions(
             self, 
             question_set: QuestionSet, 
-            questions: list[ExamQuestion]
-        ) -> tuple[QuestionSet, list[ExamQuestion]]:
+            questions: list[Question]
+        ) -> tuple[QuestionSet, list[Question]]:
         try:
             self.db.add(question_set)
             for question in questions:
@@ -63,6 +63,8 @@ class DatabaseHandler:
         except SQLAlchemyError as e:
             self.db.rollback()
             raise e
+
+    # def _create_chat_session
 
     # RETRIEVE
     def _get_user_by_id(self, user_id) -> User | None:

@@ -3,7 +3,9 @@ Database configuration that works both locally and in the cloud
 """
 
 import os
+# import asyncio
 from sqlalchemy import create_engine
+# from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Determine if we're in production or development
@@ -31,6 +33,7 @@ else:
 
 # Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
+# async_engine = create_async_engine(DATABASE_URL, connect_args=connect_args)
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

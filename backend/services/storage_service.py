@@ -1,8 +1,11 @@
 from backend.handler.storage.storage_handler import StorageHandler
 
 class StorageService:
-    def __init__(self):
-        self.storage_handler = StorageHandler()
+    def __init__(
+        self, 
+        storage_handler: StorageHandler
+    ):
+        self.storage_handler = storage_handler
         
     def upload_case_to_s3(self, file_data: bytes, user_id: str):
         """

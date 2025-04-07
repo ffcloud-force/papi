@@ -20,4 +20,5 @@ class ChatService:
 
     def start_chat_session_for_topic(self, user_id: str, case_id: str, topic: str):
         """start a new chat session for a user"""
+        #@TODO: check if there is an existing chat session for the user for that case
         self.db_service.create_chat_session(user_id, case_id, topic)

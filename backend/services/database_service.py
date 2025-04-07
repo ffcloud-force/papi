@@ -1,4 +1,4 @@
-from backend.database.persistent.models import User, Case, ExamQuestion, QuestionSet
+from backend.database.persistent.models import User, Case, Question, QuestionSet
 from backend.api.schemas.qanda import QuestionRetrieve
 from backend.handler.database.database_handler import DatabaseHandler
 from backend.api.schemas.case import CaseCreate
@@ -124,16 +124,16 @@ class DatabaseService:
     # Question-specific operations
     def create_questions_and_set(
             self, 
-            questions: dict[str, list[ExamQuestion]], 
+            questions: dict[str, list[Question]], 
             user_id: int, 
             case_id: int
-        ) -> tuple[QuestionSet, list[ExamQuestion]]:
+        ) -> tuple[QuestionSet, list[Question]]:
         """
         Create question sets for all topics in a single transaction.
         Each topic gets its own QuestionSet.
         
         Args:
-            questions: Dictionary mapping topics to lists of ExamQuestion objects
+            questions: Dictionary mapping topics to lists of Question objects
             user_id: ID of the user creating the questions
             case_id: ID of the case these questions refer to
         """

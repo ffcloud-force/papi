@@ -8,7 +8,7 @@ from backend.handler.llm.prompts.exam_prompts import (
 #     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id, 
 #     get_all_prompt_ids, get_examiner_prompt_answer
 # )
-from backend.database.persistent.models import ExamQuestion
+from backend.database.persistent.models import Question
 from backend.handler.storage.file_converter import FileConverter
 from backend.services.database_service import DatabaseService
 import json
@@ -98,7 +98,7 @@ class LLMService:
                 
         return results
     
-    def store_questions_and_set(self, questions: dict[str, list[ExamQuestion]], user_id: int, case_id: int):
+    def store_questions_and_set(self, questions: dict[str, list[Question]], user_id: int, case_id: int):
         """Store the generated questions in the database using DatabaseService"""
         try:
             # Use the database service to store questions
@@ -336,13 +336,13 @@ class LLMService:
             return None
 
     def _create_exam_question_object(self, raw_question, answer, general_type, specific_type, user_id):
-        """Create an ExamQuestion object from raw question data"""
+        """Create an Question object from raw question data"""
         # Let the model handle conversion through its property
-        return ExamQuestion(
+        return Question(
             question=raw_question["question"],
             context=raw_question.get("context"),
             difficulty=raw_question["difficulty"],
-            keywords=raw_question["keywords"],  # Let the ExamQuestion model handle conversion
+            keywords=raw_question["keywords"],  # Let the Question model handle conversion
             general_type=general_type,
             specific_type=specific_type,
             answer=answer,

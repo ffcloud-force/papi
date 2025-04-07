@@ -3,6 +3,7 @@ Script to initialize the database
 """
 
 from backend.database.persistent.config import engine, Base
+from backend.database.persistent.models import User, Case, QuestionSet, Question, ChatSession, AnswerDiscussion, Message, UserAnswer
 
 def init_db():
     # Create all tables
