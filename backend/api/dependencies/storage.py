@@ -15,5 +15,5 @@ def get_storage_service(
 def get_file_converter() -> FileConverter:
     return FileConverter()
 
-get_storage_service_dependency = Annotated[StorageService, Depends(get_storage_service)]
-get_file_converter_dependency = Annotated[FileConverter, Depends(get_file_converter)]
+storage_service_dependency = Annotated[StorageService, Depends(get_storage_service)]
+file_converter_dependency = Annotated[FileConverter, Depends(get_file_converter)]

@@ -19,6 +19,7 @@ async def create_admin_if_needed():
     """Check if any users exist in the DB, if not create an admin user"""
     db = SessionLocal()
     try:
+        # import pdb; pdb.set_trace()
         # Check if any users exist
         user_count = db.query(User).count()
         if user_count == 0:

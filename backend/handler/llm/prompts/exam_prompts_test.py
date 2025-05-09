@@ -28,7 +28,6 @@ EXAM_PROMPTS = {
         "Orientiere dich an tatsächlichen Prüfungssituationen, in denen der Kandidat seinen Fall darstellt und von zwei Prüfern dazu befragt wird."
         "Bitte formuliere nun eine Antwort auf die oben genannte Frage: "
     ),
-    
     "prompt_types": [
         # Simple prompt types
         {
@@ -43,7 +42,7 @@ EXAM_PROMPTS = {
                 "- Beurteilung der Ergebnisse diagnostischer Verfahren "
                 "- Gewichtung unterschiedlicher Informationen für die Diagnosestellung "
                 "Achte dabei auf Testverfahren, Klassifikationssysteme (ICD/DSM) und Ausschlussdiagnosen.\n\n"
-            )
+            ),
         },
         # {
         #     "id": "model",
@@ -106,7 +105,6 @@ EXAM_PROMPTS = {
         #         "- Supervision und deren Einfluss auf den Behandlungsprozess\n\n"
         #     )
         # },
-        
         # Complex prompt types
         # {
         #     "id": "relationships_core_conflictual_relationship_theme",
@@ -245,7 +243,7 @@ EXAM_PROMPTS = {
                 "- Regulationsstörungen als Folge struktureller Defizite "
                 "- Auswirkungen früher Traumatisierungen auf die Strukturentwicklung "
                 "- Differenzialdiagnostik zwischen Konflikt- und Strukturpathologie\n\n"
-            )
+            ),
         },
         # {
         #     "id": "structure_defense_mechanisms",
@@ -281,7 +279,6 @@ EXAM_PROMPTS = {
         #     )
         # }
     ],
-    
     "output_format_questions": (
         "Gib deine Antwort als JSON-Array zurück. Jede Frage sollte ein separates JSON-Objekt sein mit folgender Struktur: "
         "{ "
@@ -293,27 +290,30 @@ EXAM_PROMPTS = {
         "} "
         "Formatiere das JSON korrekt, damit es direkt maschinell verarbeitet werden kann."
     ),
-    "output_format_answers": (
-        "Gib deine Antwort als einfachen Text zurück. "
-    )
+    "output_format_answers": ("Gib deine Antwort als einfachen Text zurück. "),
 }
+
 
 # Helper functions
 def get_examiner_prompt():
     """Get the system prompt"""
     return EXAM_PROMPTS["examiner_prompt"]
 
+
 def get_examiner_prompt_answer():
     """Get the system prompt for answer generation"""
     return EXAM_PROMPTS["examiner_prompt_answer"]
+
 
 def get_output_format_questions():
     """Get the output format for questions"""
     return EXAM_PROMPTS["output_format_questions"]
 
+
 def get_output_format_answers():
     """Get the output format for answers"""
     return EXAM_PROMPTS["output_format_answers"]
+
 
 def get_prompt_by_id(prompt_id):
     """Get a prompt by its ID"""
@@ -322,18 +322,26 @@ def get_prompt_by_id(prompt_id):
             return prompt_type["prompt"]
     return ""
 
+
 def get_all_prompt_ids():
     """Get all available prompt IDs"""
     return [pt["id"] for pt in EXAM_PROMPTS["prompt_types"]]
+
 
 def get_simple_prompt_ids():
     """Get IDs of all simple prompts"""
     return [pt["id"] for pt in EXAM_PROMPTS["prompt_types"] if pt["type"] == "simple"]
 
+
 def get_complex_prompt_ids():
     """Get IDs of all complex prompts"""
     return [pt["id"] for pt in EXAM_PROMPTS["prompt_types"] if pt["type"] == "complex"]
 
+
 def get_prompt_by_specialization(specialization):
     """Get all prompts by specialization"""
-    return [pt for pt in EXAM_PROMPTS["prompt_types"] if pt["specialization"] == specialization]
+    return [
+        pt
+        for pt in EXAM_PROMPTS["prompt_types"]
+        if pt["specialization"] == specialization
+    ]

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from backend.api.schemas.user import UserCreate, UserUpdate, UserResponse
 from backend.utils.password_utils import hash_password, verify_password
-from backend.api.dependencies.database import get_database_service_dependency
+from backend.api.dependencies.database import database_service_dependency
 from backend.api.dependencies.auth import current_user_resource_access_dependency
 
 router = APIRouter()
@@ -10,7 +10,7 @@ router = APIRouter()
 async def get_user(
     user_id: str,
     # _: User = Depends(admin_only), # @TODO: REMOVE BEFORE PRODUCTION
-    db_service: get_database_service_dependency
+    db_service: database_service_dependency
 ):
     """
     Admin only endpoint, normal users use the /me endpoint
@@ -24,14 +24,14 @@ async def get_user(
 @router.get("/")
 async def list_users(
     # _: User = Depends(admin_only),  # @TODO: REMOVE BEFORE PRODUCTION
-    db_service: get_database_service_dependency
+    db_service: database_service_dependency
 ):
     return db_service.get_all_users()
 
 @router.post("/", response_model=UserResponse)
 async def create_user(
     user: UserCreate,
-    db_service: get_database_service_dependency
+    db_service: database_service_dependency
 ):
     try:
         new_user = db_service.create_user(user)
@@ -53,7 +53,7 @@ async def create_user(
 async def update_user(
     user_update: UserUpdate,
     current_user: current_user_resource_access_dependency,
-    db_service: get_database_service_dependency
+    db_service: database_service_dependency
 ):
     #@TODO: NEEDS WORK, NOT A PRIO
     # If updating sensitive fields (email/password), require current password
@@ -95,7 +95,7 @@ async def update_user(
 
 @router.delete("/{user_id}")
 async def delete_user(
-    db_service: get_database_service_dependency,
+    db_service: database_service_dependency,
     current_user: current_user_resource_access_dependency
 ):
     existing_user = db_service.get_user_by_id(current_user.id)

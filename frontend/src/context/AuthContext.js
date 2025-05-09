@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in on component mount
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     const storedUser = localStorage.getItem('user');
     
     if (token && storedUser) {
@@ -21,14 +21,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData, token) => {
-    localStorage.setItem('token', token);
+    localStorage.setItem('access_token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     localStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);

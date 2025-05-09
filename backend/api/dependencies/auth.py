@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from backend.database.persistent.models import User
-from backend.api.dependencies.database import get_database_service_dependency
+from backend.api.dependencies.database import database_service_dependency
 import inspect
 from backend.config.settings import (
     JWT_SECRET_KEY,
@@ -17,7 +17,7 @@ from backend.config.settings import (
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def get_current_user(
-    db_service: get_database_service_dependency,
+    db_service: database_service_dependency,
     token: str = Depends(oauth2_scheme)
 ): 
     credentials_exception = HTTPException(
@@ -63,7 +63,7 @@ def admin_only(current_user: User = Depends(get_current_user)):
 
 def check_user_access(
     user_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: current_user_dependency
 ):
     """Check if current user can access the specified user"""
     if not current_user.role.can_access_resource(user_id, current_user.id):
@@ -91,7 +91,7 @@ def require_resource_access(resource_type: ResourceType) -> Callable:
 
     def check_access(
         current_user: current_user_dependency,
-        db_service: get_database_service_dependency,
+        db_service: database_service_dependency,
         **path_params  # This will receive all path parameters
     ) -> User:
         # Get the ID from the correct path parameter

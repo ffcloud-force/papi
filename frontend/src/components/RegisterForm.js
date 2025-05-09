@@ -37,8 +37,14 @@ const RegisterForm = () => {
       // Remove confirmPassword as it's not needed in the API
       const { confirmPassword, ...userData } = values;
       
+      // Add confirm_password to match backend schema
+      const apiData = {
+        ...userData,
+        confirm_password: confirmPassword
+      };
+      
       // Make API call to your FastAPI backend
-      const response = await axios.post('http://localhost:8000/users/', userData);
+      const response = await axios.post('http://localhost:8000/users/', apiData);
       
       setStatus({
         submitted: true,
@@ -51,7 +57,16 @@ const RegisterForm = () => {
       let errorMessage = 'Registration failed. Please try again.';
       
       if (error.response && error.response.data) {
-        errorMessage = error.response.data.detail || errorMessage;
+        // Handle validation errors from FastAPI
+        if (Array.isArray(error.response.data.detail)) {
+          // Format validation errors
+          errorMessage = error.response.data.detail
+            .map(err => `${err.loc[err.loc.length - 1]}: ${err.msg}`)
+            .join('\n');
+        } else {
+          // Handle single error message
+          errorMessage = error.response.data.detail || errorMessage;
+        }
       }
       
       setStatus({
@@ -70,7 +85,9 @@ const RegisterForm = () => {
       
       {status.submitted && (
         <div className={`alert ${status.success ? 'alert-success' : 'alert-danger'}`}>
-          {status.message}
+          {status.message.split('\n').map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
         </div>
       )}
       

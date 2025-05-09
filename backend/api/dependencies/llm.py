@@ -23,5 +23,5 @@ def get_llm_service(
     )
 
 # Create annotated dependencies for type hints
-get_llm_handler_dependency = Annotated[LLMHandler, Depends(get_llm_handler)]
+llm_handler_dependency = Annotated[LLMHandler, Depends(get_llm_handler)]
 llm_service_dependency = Annotated[LLMService, Depends(get_llm_service)] 

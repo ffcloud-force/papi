@@ -7,10 +7,11 @@ It is responsible for uploading the case to S3 and the database.
 It is also responsible for deleting the case from S3 and the database.
 """
 
+
 class StorageHandler:
     def __init__(self):
         pass
-    
+
     # PRIVATE METHODS #
     def _generate_case_id(self, user_id: int, case_text: str):
         """
@@ -20,46 +21,51 @@ class StorageHandler:
         return hashlib.sha256(unique_string.encode()).hexdigest()
 
     ## S3 operations ##
-    def _upload_case_to_s3(self, file_data:bytes, user_id:str):
+    def _upload_case_to_s3(self, file_data: bytes, user_id: str):
         """
         Upload file data to S3
-        
+
         Args:
             file_data: The binary content of the file
             user_id: ID of the user uploading the file
-            
+
         Raises:
             FileExistsError: If the file already exists in S3
         """
         case_id = self._generate_case_id(user_id, file_data)
-        
+
         # Generate a unique S3 key/path
         s3_key = f"cases/users/{user_id}/{case_id}"
-        
+
         # Upload to S3 using the file data
-        s3 = boto3.client('s3')
+        s3 = boto3.client("s3")
         try:
-            s3.head_object(Bucket='cf-papi', Key=s3_key)
+            s3.head_object(Bucket="cf-papi", Key=s3_key)
             # Object exists, raise a custom error
-            raise FileExistsError(f"Eine Datei mit diesem Inhalt existiert bereits: {s3_key}")
+            raise FileExistsError(
+                f"Eine Datei mit diesem Inhalt existiert bereits: {s3_key}"
+            )
         except s3.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
+            if e.response["Error"]["Code"] == "404":
                 # Object doesn't exist, safe to upload
-                s3.put_object(Bucket='cf-papi', Key=s3_key, Body=file_data)
+                s3.put_object(Bucket="cf-papi", Key=s3_key, Body=file_data)
             else:
                 # Some other error occurred with the S3 request
                 raise
-        return s3_key, case_id  # Return the S3 path and case id for storage in your database
+        return (
+            s3_key,
+            case_id,
+        )  # Return the S3 path and case id for storage in your database
 
     def _delete_case_from_s3(self, s3_key):
         """
         Delete a case from S3
         """
-        s3 = boto3.client('s3')
+        s3 = boto3.client("s3")
         try:
-            s3.delete_object(Bucket='cf-papi', Key=s3_key)
+            s3.delete_object(Bucket="cf-papi", Key=s3_key)
         except s3.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
+            if e.response["Error"]["Code"] == "404":
                 # Object doesn't exist, safe to delete
                 pass
             else:
@@ -69,9 +75,9 @@ class StorageHandler:
         """
         Get a case by id from S3
         """
-        s3 = boto3.client('s3')
+        s3 = boto3.client("s3")
         s3_key = f"cases/users/{user_id}/{case_id}"
-        s3.get_object(Bucket='cf-papi', Key=s3_key)
+        s3.get_object(Bucket="cf-papi", Key=s3_key)
         return s3_key
 
     # ## DB operations ##
@@ -81,7 +87,7 @@ class StorageHandler:
     #     """
     #     # Determine file type from extension
     #     file_type = filename.split('.')[-1].lower() if '.' in filename else None
-        
+
     #     try:
     #         # Create and validate with Pydantic
     #         case_model = CaseCreate(
@@ -106,7 +112,7 @@ class StorageHandler:
     #             case_metadata=case_model.case_metadata,
     #             user_id=case_model.user_id
     #         )
-            
+
     #         try:
     #             self.db.add(case)
     #             self.db.commit()
@@ -114,9 +120,9 @@ class StorageHandler:
     #             print(e)
     #             self.db.rollback()
     #             raise e
-            
+
     #         return case
-            
+
     #     except ValidationError as e:
     #         print(f"Case data validation failed: {e}")
     #         # You can log, handle, or re-raise as needed

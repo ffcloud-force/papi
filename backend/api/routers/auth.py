@@ -4,9 +4,8 @@ from argon2.exceptions import VerifyMismatchError
 from backend.database.persistent.models import User
 from backend.api.schemas.user import UserResponse
 from backend.api.dependencies.auth import get_current_user, create_access_token
+from backend.api.dependencies.database import database_service_dependency
 from backend.utils.password_utils import verify_password
-from backend.services.database_service import DatabaseService
-from backend.api.dependencies.database import get_database_service
 
 router = APIRouter()
 
@@ -15,8 +14,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 @router.post("/token")
 def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db_service: DatabaseService = Depends(get_database_service)
+    db_service: database_service_dependency,
+    form_data: OAuth2PasswordRequestForm = Depends()
 ):
     """
     Get access token for authentication.
@@ -58,10 +57,10 @@ def login(
         "token_type": "bearer"
     }
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 async def read_users_me(
-    current_user: User = Depends(get_current_user),
-    db_service: DatabaseService = Depends(get_database_service)
+    current_user: User = Depends(get_current_user)
+    # db_service: database_service_dependency = Depends(database_service_dependency)
 ):
 
     # Convert SQL model to Pydantic model
