@@ -6,14 +6,17 @@ from backend.database.persistent.models import (
     CaseStatus,
     CaseDiscussion,
     AnswerDiscussion,
-    Message
+    Message,
+    Prompt,
 )
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from sqlalchemy.orm import Session
+from backend.database.persistent.models import PromptType
 
 
+# @TODO: Tryo to get cached queries with redis first
 class DatabaseHandler:
     def __init__(self, db: Session):
         self.db = db
@@ -91,10 +94,8 @@ class DatabaseHandler:
         except SQLAlchemyError as e:
             self.db.rollback()
             raise e
-        
-    def _create_message(
-            self, message: Message
-    ) -> Message:
+
+    def _create_message(self, message: Message) -> Message:
         try:
             self.db.add(message)
             self.db.commit()
@@ -103,6 +104,14 @@ class DatabaseHandler:
             self.db.rollback()
             raise e
 
+    def _create_prompt(self, prompt: Prompt) -> Prompt:
+        try:
+            self.db.add(prompt)
+            self.db.commit()
+            return prompt
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise e
 
     # RETRIEVE
     def _get_user_by_id(self, user_id) -> User | None:
@@ -116,26 +125,28 @@ class DatabaseHandler:
 
     def _get_case_by_id(self, case_id) -> Case | None:
         return self.db.query(Case).filter(Case.id == case_id).first()
-        
+
     def _get_question_by_id(self, question_id: int) -> Question | None:
         """
         Get a question by its ID
-        
+
         Args:
             question_id: ID of the question
-            
+
         Returns:
             Question object or None if not found
         """
         return self.db.query(Question).filter(Question.id == question_id).first()
-        
-    def _get_answer_discussion_by_id(self, answer_discussion_id: int) -> AnswerDiscussion | None:
+
+    def _get_answer_discussion_by_id(
+        self, answer_discussion_id: int
+    ) -> AnswerDiscussion | None:
         """
         Get an answer discussion by its ID
-        
+
         Args:
             answer_discussion_id: ID of the answer discussion
-            
+
         Returns:
             AnswerDiscussion object or None if not found
         """
@@ -145,14 +156,16 @@ class DatabaseHandler:
             .filter(AnswerDiscussion.id == answer_discussion_id)
             .first()
         )
-        
-    def _get_messages_by_answer_discussion_id(self, answer_discussion_id: int) -> list[Message]:
+
+    def _get_messages_by_answer_discussion_id(
+        self, answer_discussion_id: int
+    ) -> list[Message]:
         """
         Get all messages for a specific answer discussion, ordered by creation time
-        
+
         Args:
             answer_discussion_id: ID of the answer discussion
-            
+
         Returns:
             List of Message objects
         """
@@ -202,7 +215,7 @@ class DatabaseHandler:
     async def _get_all_unanswered_questions(
         self, case_id: str
     ) -> list[Question] | None:
-        questions = (
+        return (
             self.db.query(Question)
             .join(QuestionSet)
             .filter(
@@ -210,16 +223,15 @@ class DatabaseHandler:
             )
             .all()
         )
-        return questions
 
     def _get_case_discussions(self, case_id: str, user_id: str) -> list[CaseDiscussion]:
         """
         Get all case discussions for a specific case and user, with eager loading of answer discussions
-        
+
         Args:
             case_id: ID of the case
             user_id: ID of the user
-            
+
         Returns:
             List of CaseDiscussion objects with answer_discussions eager-loaded
         """
@@ -227,12 +239,27 @@ class DatabaseHandler:
             self.db.query(CaseDiscussion)
             .options(joinedload(CaseDiscussion.answer_discussions))
             .filter(
-                CaseDiscussion.case_id == case_id,
-                CaseDiscussion.user_id == user_id
+                CaseDiscussion.case_id == case_id, CaseDiscussion.user_id == user_id
             )
             .order_by(CaseDiscussion.last_message_at.desc())
             .all()
         )
+
+    def _get_all_prompts(self) -> list[Prompt]:
+        return self.db.query(Prompt).all()
+
+    def _get_all_prompts_by_type(self, prompt_type: PromptType) -> list[Prompt]:
+        return self.db.query(Prompt).filter(Prompt.type == prompt_type).all()
+    
+    def _get_all_prompts_by_type_negative(self, prompt_type: PromptType) -> list[Prompt]:
+        """get all prompts that are not type x"""
+        return self.db.query(Prompt).filter(Prompt.type != prompt_type).all()
+
+    def _get_all_prompt_ids(self) -> list[int]:
+        return [prompt.id for prompt in self.db.query(Prompt).all()]
+
+    def _get_prompt_by_id(self, prompt_id: int) -> Prompt | None:
+        return self.db.query(Prompt).filter(Prompt.id == prompt_id).first()
 
     # UPDATE
     def _update_user(self, user_id: str, update_data: dict) -> User | None:

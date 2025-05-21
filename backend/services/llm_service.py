@@ -1,19 +1,6 @@
 from backend.handler.llm.llm_handler import LLMHandler
 from backend.api.schemas.qanda import Question, Answer
-
-# from backend.handler.llm.prompts.exam_prompts import (
-#     get_examiner_prompt, get_output_format_questions, get_output_format_answers, get_prompt_by_id,
-#     get_all_prompt_ids, get_examiner_prompt_answer
-# )
-from backend.handler.llm.prompts.exam_prompts_test import (
-    get_examiner_prompt,
-    get_output_format_questions,
-    get_output_format_answers,
-    get_prompt_by_id,
-    get_all_prompt_ids,
-    get_examiner_prompt_answer,
-)
-from backend.database.persistent.models import Question as QuestionSQL
+from backend.database.persistent.models import Question as QuestionSQL, PromptType
 from backend.handler.storage.file_converter import FileConverter
 from backend.services.database_service import DatabaseService
 from backend.database.persistent.models import Message as Message
@@ -30,25 +17,24 @@ class LLMService:
     def __init__(
         self,
         llm_handler: LLMHandler,
-        database_service: DatabaseService,
+        db_service: DatabaseService,
         file_converter: FileConverter,
     ):
         self.llm_handler = llm_handler
-        self.database_service = database_service
+        self.db_service = db_service
         self.file_converter = file_converter
 
         self.case_text = None
 
     # PUBLIC METHODS
-
     async def generate_response(
         self, message: str, chat_history: Optional[list[Message]] = None
     ):
         """Generate a bot response to a message, incorporating chat history if provided"""
         formatted_chat_history = self._format_chat_history(chat_history)
         # @TODO: Add System prompt with case text (maybe only the relevant parts), and instructions for the LLM
-        response = await self.llm_handler._get_completion_async(formatted_chat_history)
-        return response
+        # @TODO: Add new message to chat_history
+        return await self.llm_handler._get_completion_async(formatted_chat_history)
 
     def load_case_document_from_stream(self, file_data: bytes):
         """Load case document from stream"""
@@ -58,24 +44,17 @@ class LLMService:
             print(f"Error loading case document from stream: {e}")
             raise e
 
-    def load_case_document_from_database(self, case_id):
-        """Load case document from database"""
-        # @TODO: Implement this
-        pass
-
-    def load_case_document_from_s3(self, case_id):
-        """Load case document from S3"""
-        # @TODO: Implement this
-        pass
-
     async def generate_all_questions_and_answers_async(self, user_id):
         """Generate questions for all prompt types asynchronously"""
         if not self.case_text:
             raise ValueError("Case text not loaded")
 
         results = {}
-        # Get all prompt IDs
-        prompt_ids = get_all_prompt_ids()
+
+        # Get all prompts
+        question_prompts = self.db_service.get_all_prompts_by_type_negative(
+            PromptType.INSTRUCTION
+        )
 
         # Use a semaphore to limit concurrency
         semaphore = asyncio.Semaphore(3)
@@ -85,10 +64,9 @@ class LLMService:
             self._process_with_semaphore(
                 semaphore,
                 self._generate_questions_and_answers_async,
-                prompt_id,
-                user_id,
+                prompt,
             )
-            for prompt_id in prompt_ids
+            for prompt in question_prompts
         ]
 
         # Execute tasks with concurrency control
@@ -98,37 +76,19 @@ class LLMService:
         for result, prompt_id in completed_tasks:
             if result is not None:
                 results[prompt_id] = result
-                print(f"Completed processing for prompt: {prompt_id}")
+                print(f"Completed processing for prompt: {prompt_id.id}")
             else:
-                print(f"No results for prompt: {prompt_id}")
-
-        return results
-
-    # Keep the sync version for compatibility
-    def generate_all_questions_and_answers(self, user_id):
-        """Generate questions for all prompt types (synchronous version)"""
-        if not self.case_text:
-            raise ValueError("Case text not loaded")
-
-        results = {}
-        for prompt_id in get_all_prompt_ids():
-            print(f"Processing prompt: {prompt_id}")
-            questions = self._generate_questions_and_answers(prompt_id, user_id)
-            if questions:
-                results[prompt_id] = questions
+                print(f"No results for prompt: {prompt_id.id}")
 
         return results
 
     def store_questions_and_set(
-        self, questions: dict[str, list[Question]], user_id: int, case_id: int
+        self, questions: dict[str, list[Question]], case_id: int
     ):
         """Store the generated questions in the database using DatabaseService"""
         try:
             # Use the database service to store questions
-            question_sets = self.database_service.create_questions_and_set(
-                questions, user_id, case_id
-            )
-            return question_sets
+            return self.db_service.create_questions_and_set(questions, case_id)
         except json.JSONDecodeError as e:
             print(f"JSON error: {e}")
             return None
@@ -140,42 +100,10 @@ class LLMService:
             return None
 
     # PRIVATE HIGHLEVEL METHODS
-    def _generate_questions_and_answers(self, prompt_id, user_id):
-        """Generate questions with answers for a specific prompt"""
-        # Get raw questions
-        raw_questions, general_type, specific_type = (
-            self._generate_questions_for_prompt(prompt_id)
-        )
-
-        if not raw_questions:
-            return []
-
-        # Process each question individually with answers
-        processed_questions = []
-        for raw_q in raw_questions:
-            try:
-                # Generate answer
-                answer = self._generate_answer_for_question(raw_q["question"])
-
-                # Create question object
-                question = self._create_question_object(
-                    raw_q, answer, general_type, specific_type, user_id
-                )
-                processed_questions.append(question)
-
-            except Exception as e:
-                print(f"Error processing question: {e}")
-
-        return processed_questions
-
-    async def _generate_questions_and_answers_async(self, prompt_id, user_id):
+    async def _generate_questions_and_answers_async(self, prompt):
         """Generate questions with answers for a specific prompt asynchronously"""
         # Get raw questions
-        (
-            raw_questions,
-            general_type,
-            specific_type,
-        ) = await self._generate_questions_for_prompt_async(prompt_id)
+        raw_questions = await self._generate_questions_for_prompt_async(prompt)
 
         if not raw_questions:
             return []
@@ -187,12 +115,7 @@ class LLMService:
         # Create tasks with semaphore control
         tasks = [
             self._process_with_semaphore(
-                question_semaphore,
-                self._process_question_async,
-                raw_q,
-                general_type,
-                specific_type,
-                user_id,
+                question_semaphore, self._process_question_async, raw_q
             )
             for raw_q in raw_questions
         ]
@@ -203,19 +126,14 @@ class LLMService:
         # Filter out None results (from errors) and extract just the first element of the tuple
         return [result for result, _ in processed_results if result is not None]
 
-    async def _process_question_async(
-        self, raw_q, general_type, specific_type, user_id
-    ):
+    async def _process_question_async(self, raw_q):
         """Process a single question asynchronously"""
         try:
             # Generate answer
             answer = await self._generate_answer_for_question_async(raw_q["question"])
 
             # Create question object
-            question = self._create_question_object(
-                raw_q, answer, general_type, specific_type, user_id
-            )
-            return question
+            return self._create_question_object(raw_q, answer)
         except Exception as e:
             print(f"Error processing question: {e}")
             return None
@@ -247,27 +165,23 @@ class LLMService:
                 print(f"Error processing {item}: {str(e)}")
                 return None, item
 
-    async def _generate_questions_for_prompt_async(self, prompt_id):
-        """Generate raw questions for a specific prompt without answers asynchronously"""
+    async def _generate_questions_for_prompt_async(self, prompt):
+        """Generate raw questions for a specific prompt asynchronously"""
         if not self.case_text:
             raise ValueError("Case text not loaded")
 
-        # Extract prompt types
-        if "_" in prompt_id:
-            general_type, specific_type = prompt_id.split("_", 1)
-        else:
-            general_type, specific_type = prompt_id, None
-
-        # Create prompt for question generation
-        prompt = get_examiner_prompt()
-        prompt += get_prompt_by_id(prompt_id)
-        prompt += "Nachfolgend bekommst du den Falltext. Erstelle Fragen zu diesem Fall, welche das oben genannte Thema betreffen: "
-        prompt += "\n\n" + self.case_text
-        prompt += get_output_format_questions()
+        # Construct a single, well-structured prompt
+        prompt_content = (
+            f"{self.db_service.get_prompt_by_id('examiner_prompt_question').content}\n\n"
+            f"{prompt.content}\n\n"
+            f"Nachfolgend bekommst du den Falltext. Erstelle Fragen zu diesem Fall, welche das oben genannte Thema betreffen:\n\n"
+            f"{self.case_text}\n\n"
+            f"{self.db_service.get_prompt_by_id('output_format_questions').content}"
+        )
 
         # Get questions from LLM asynchronously
         questions_str = await self.llm_handler._get_completion_async(
-            prompt, json_mode=True
+            [SystemMessage(content=prompt_content)], json_mode=True
         )
         raw_questions = self.llm_handler._extract_questions(questions_str)
 
@@ -278,38 +192,7 @@ class LLMService:
             if valid_q:
                 validated_questions.append(valid_q)
 
-        return validated_questions, general_type, specific_type
-
-    def _generate_questions_for_prompt(self, prompt_id):
-        """Generate raw questions for a specific prompt without answers (synchronous version)"""
-        if not self.case_text:
-            raise ValueError("Case text not loaded")
-
-        # Extract prompt types
-        if "_" in prompt_id:
-            general_type, specific_type = prompt_id.split("_", 1)
-        else:
-            general_type, specific_type = prompt_id, None
-
-        # Create prompt for question generation
-        prompt = get_examiner_prompt()
-        prompt += get_prompt_by_id(prompt_id)
-        prompt += "Nachfolgend bekommst du den Falltext. Erstelle Fragen zu diesem Fall, welche das oben genannte Thema betreffen: "
-        prompt += "\n\n" + self.case_text
-        prompt += get_output_format_questions()
-
-        # Get questions from LLM
-        questions_str = self.llm_handler._get_completion(prompt, json_mode=True)
-        raw_questions = self.llm_handler._extract_questions(questions_str)
-
-        # Validate each raw question
-        validated_questions = []
-        for q in raw_questions:
-            valid_q = self._validate_question(q)
-            if valid_q:
-                validated_questions.append(valid_q)
-
-        return validated_questions, general_type, specific_type
+        return validated_questions
 
     def _validate_question(self, raw_question):
         """Validate a question using Pydantic models"""
@@ -320,11 +203,9 @@ class LLMService:
                     k.strip() for k in raw_question["keywords"].split(",")
                 ]
 
-            # Validate with Pydantic
-            validated = Question(**raw_question)
-            return (
-                validated.model_dump()
-            )  # In Pydantic v2, use model_dump() instead of dict()
+            # Validate with Pydantic using model_validate
+            validated = Question.model_validate(raw_question)
+            return validated.model_dump()
         except Exception as e:
             print(f"Question validation error: {str(e)}")
             return None
@@ -334,40 +215,21 @@ class LLMService:
         if not self.case_text:
             raise ValueError("Case text not loaded")
 
-        prompt = get_examiner_prompt_answer()
-        prompt += f"Question: {question}"
-        prompt += "\nNachfolgend bekommst du den Falltext. Antworte auf die oben genannte Frage: "
-        prompt += "\n\n" + self.case_text
-        prompt += get_output_format_answers()
+        prompt_content = (
+            f"{self.db_service.get_prompt_by_id('examiner_prompt_answer').content}\n\n"
+            f"Question: {question}\n\n"
+            f"Nachfolgend bekommst du den Falltext. Antworte auf die oben genannte Frage: \n\n"
+            f"{self.case_text}\n\n"
+            f"{self.db_service.get_prompt_by_id('output_format_answers').content}"
+        )
 
-        answer_text = await self.llm_handler._get_completion_async(prompt)
-
-        # Validate the answer
-        try:
-            validated_answer = self._validate_answer(answer_text)
-            return validated_answer
-        except Exception as e:
-            print(f"Answer validation error: {e}")
-            # Decide what to do with invalid answers - return a default?
-            return "Unable to generate a valid answer."
-
-    def _generate_answer_for_question(self, question):
-        """Generate answer for a specific question (synchronous version)"""
-        if not self.case_text:
-            raise ValueError("Case text not loaded")
-
-        prompt = get_examiner_prompt_answer()
-        prompt += f"Question: {question}"
-        prompt += "\nNachfolgend bekommst du den Falltext. Antworte auf die oben genannte Frage: "
-        prompt += "\n\n" + self.case_text
-        prompt += get_output_format_answers()
-
-        answer_text = self.llm_handler._get_completion(prompt)
+        answer_text = await self.llm_handler._get_completion_async(
+            [SystemMessage(content=prompt_content)]
+        )
 
         # Validate the answer
         try:
-            validated_answer = self._validate_answer(answer_text)
-            return validated_answer
+            return self._validate_answer(answer_text)
         except Exception as e:
             print(f"Answer validation error: {e}")
             # Decide what to do with invalid answers - return a default?
@@ -376,23 +238,19 @@ class LLMService:
     def _validate_answer(self, answer_text):
         """Validate an answer using Pydantic models"""
         try:
-            validated = Answer(content=answer_text)
+            validated = Answer.model_validate({"content": answer_text})
             return validated.model_dump()["content"]
         except Exception as e:
             print(f"Answer validation error: {str(e)}")
             return None
 
-    def _create_question_object(
-        self, raw_question, answer, general_type, specific_type, user_id
-    ):
-        """Create an Question object from raw question data"""
+    def _create_question_object(self, raw_question, answer):
+        """Create a Question object from raw question data"""
         # Let the model handle conversion through its property
         return QuestionSQL(
             question=raw_question["question"],
             context=raw_question.get("context"),
             difficulty=raw_question["difficulty"],
             keywords=raw_question["keywords"],
-            general_type=general_type,
-            specific_type=specific_type,
             llm_answer=answer,
         )

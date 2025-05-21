@@ -1,8 +1,8 @@
 import random
 from backend.services.llm_service import LLMService
 from backend.services.database_service import DatabaseService
-from backend.database.persistent.models import CaseDiscussion, MessageRole
-from typing import Optional, List, Dict, Any
+from backend.database.persistent.models import MessageRole
+from typing import Optional, Dict, Any
 
 """
 ChatService

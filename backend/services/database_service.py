@@ -5,13 +5,16 @@ from backend.database.persistent.models import (
     QuestionSet,
     CaseDiscussion,
     MessageRole,
+    Prompt,
+    PromptType,
 )
 from backend.api.schemas.chat import (
     CaseDiscussionCreate,
     AnswerDiscussionCreate,
     ChatMessageCreate,
 )
-from backend.api.schemas.qanda import QuestionRetrieve
+from backend.api.schemas.qanda import QuestionRetrieve, QuestionSetCreate
+from backend.api.schemas.prompt import PromptCreate
 from backend.api.schemas.case import CaseCreate
 from backend.api.schemas.user import UserCreate
 from backend.database.persistent.models import CaseStatus, AnswerDiscussion, Message
@@ -29,7 +32,9 @@ class DatabaseService:
     # User-specific operations
     def create_user(self, user_data: UserCreate):
         try:
+            # @TODO: Pass in values and create UserCreate object here and validate it
             validated_user_data = UserCreate.model_validate(user_data)
+
             # Check if user exists
             existing_user = self.db_handler._get_user_by_email(
                 validated_user_data.email
@@ -135,53 +140,84 @@ class DatabaseService:
         # TODO: Add validation and error handling
         return self.db_handler._delete_case(case_id)
 
+    # QuestionSet-specific operations
+    def create_question_set(self, case_id: str, prompt_id: str, prompt_version: int):
+        try:
+            validated_question_set_data = QuestionSetCreate(
+                case_id=case_id, prompt_id=prompt_id, prompt_version=prompt_version
+            )
+            question_set = QuestionSet(
+                case_id=validated_question_set_data.case_id,
+                prompt_id=validated_question_set_data.prompt_id,
+            )
+            return self.db_handler._create_question_set(question_set)
+        except ValidationError as e:
+            print(f"Question set data validation failed: {e}")
+            raise ValueError("Invalid question set data") from e
+
     # Question-specific operations
     def create_questions_and_set(
-        self, questions: dict[str, list[Question]], user_id: int, case_id: int
-    ) -> tuple[QuestionSet, list[Question]]:
+        self, validated_questions: dict[Prompt, list[Question]], case_id: str
+    ) -> tuple[list[QuestionSet], list[Question]]:
         """
-        Create question sets for all topics in a single transaction.
-        Each topic gets its own QuestionSet.
+        Create question sets for all prompts in a single transaction.
+        Each prompt gets its own QuestionSet.
 
         Args:
-            questions: Dictionary mapping topics to lists of Question objects
-            user_id: ID of the user creating the questions
+            validated_questions: Dictionary mapping Prompt objects to lists of Question objects
             case_id: ID of the case these questions refer to
+
+        Returns:
+            Tuple of (list of created QuestionSets, list of all Questions)
         """
         try:
-            # question_sets = {}
-            # Begin transaction
-            for topic, question_list in questions.items():
-                # Create a QuestionSet for this topic
-                question_set = QuestionSet(case_id=case_id, topic=topic)
+            all_question_sets = []
+            all_questions = []
 
-            question_set, questions = (
-                self.db_handler._create_question_set_and_questions(
-                    question_set, question_list
+            for prompt, question_list in validated_questions.items():
+                # Create a QuestionSet for this prompt
+                validated_question_set_data = QuestionSetCreate(
+                    case_id=case_id, prompt_id=prompt.id, prompt_version=prompt.version
                 )
-            )
-            return question_set, questions
+                question_set = QuestionSet(
+                    case_id=validated_question_set_data.case_id,
+                    prompt_id=validated_question_set_data.prompt_id,
+                    prompt_version=validated_question_set_data.prompt_version,
+                )
+                # Questions have already been validated
+                # Create the question set and associate questions with it
+                created_set, created_questions = (
+                    self.db_handler._create_question_set_and_questions(
+                        question_set, question_list
+                    )
+                )
+
+                all_question_sets.append(created_set)
+                all_questions.extend(created_questions)
+
+            return all_question_sets, all_questions
 
         except Exception as e:
             print(f"Error creating question sets: {str(e)}")
             raise
 
     def get_questions_by_topic_for_user(
-        self, case_id: str, general_type: str, specific_type: str, user_id: str
+        self, case_id: str, category: str, sub_category: str, user_id: str
     ) -> list[dict]:
+        # TODO: Adjust to category and sub_category through relationship property
         """
         Get questions by topic for a user
 
         Args:
             case_id: ID of the case
-            general_type: General type of the questions
-            specific_type: Specific type of the questions
+            category: Category of the questions
+            sub_category: Sub-category of the questions
             user_id: ID of the user
 
         Returns:
             List of questions
         """
-        topic = f"{general_type}_{specific_type}"
+        topic = f"{category}_{sub_category}"
         question_set = self.db_handler.get_question_set_by_topic_for_user(
             case_id, topic, user_id
         )
@@ -195,8 +231,6 @@ class DatabaseService:
                     context=question.context,
                     difficulty=question.difficulty,
                     keywords=question.keywords,
-                    general_type=question.general_type,
-                    specific_type=question.specific_type,
                     answer=question.answer,
                 )
                 validated_questions.append(validated_question)
@@ -305,10 +339,9 @@ class DatabaseService:
         Returns:
             List of Message objects
         """
-        messages = self.db_handler._get_messages_by_answer_discussion_id(
+        return self.db_handler._get_messages_by_answer_discussion_id(
             answer_discussion_id
         )
-        return messages
 
     def create_chat_message(
         self, role: MessageRole, content: str, answer_discussion_id: int
@@ -328,3 +361,38 @@ class DatabaseService:
         )
 
         return self.db_handler._create_message(chat_message)
+
+    # Prompt-specific operations
+    def create_prompt(self, prompt_data: dict):
+        """create a prompt"""
+        try:
+            validated_prompt_data = PromptCreate.model_validate(prompt_data)
+            prompt = Prompt(
+                id=validated_prompt_data.id,
+                type=validated_prompt_data.type,
+                role=validated_prompt_data.role,
+                specialization=validated_prompt_data.specialization,
+                category=validated_prompt_data.category,
+                sub_category=validated_prompt_data.sub_category,
+                content=validated_prompt_data.content,
+            )
+            self.db_handler._create_prompt(prompt)
+            return True
+        except Exception as e:
+            print(f"Error creating default prompts: {str(e)}")
+            raise
+
+    def get_all_prompts(self) -> list[Prompt]:
+        return self.db_handler._get_all_prompts()
+
+    def get_all_prompt_ids(self) -> list[int]:
+        return self.db_handler._get_all_prompt_ids()
+
+    def get_prompt_by_id(self, prompt_id: int) -> Prompt | None:
+        return self.db_handler._get_prompt_by_id(prompt_id)
+
+    def get_all_prompts_by_type(self, prompt_type: PromptType) -> list[Prompt]:
+        return self.db_handler._get_all_prompts_by_type(prompt_type)
+
+    def get_all_prompts_by_type_negative(self, prompt_type: PromptType) -> list[Prompt]:
+        return self.db_handler._get_all_prompts_by_type_negative(prompt_type)

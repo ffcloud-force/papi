@@ -61,7 +61,7 @@ async def get_all_cases(
 async def delete_case(
     case_id: str,
     case_service: case_service_dependency,
-    current_user: current_user_resource_access_dependency,
+    current_user: current_user_dependency,
 ):
     try:
         case_service.delete_case(case_id, current_user.id)
@@ -90,12 +90,12 @@ async def get_case_questions(
 
     if case.status == CaseStatus.PROCESSING:
         return {"status": "processing", "message": "Questions are being generated"}
-    elif case.status == CaseStatus.ERROR:
+    if case.status == CaseStatus.ERROR:
         return {
             "status": "error",
             "message": "An error occurred while generating questions",
         }
-    elif case.status == CaseStatus.UPLOADED:
+    if case.status == CaseStatus.UPLOADED:
         return {
             "status": "not_started",
             "message": "Question generation has not started",

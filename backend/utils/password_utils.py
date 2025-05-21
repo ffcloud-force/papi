@@ -5,7 +5,7 @@ from backend.config.settings import (
     ARGON2_MEMORY_COST,
     ARGON2_PARALLELISM,
     ARGON2_HASH_LENGTH,
-    ARGON2_SALT_LENGTH
+    ARGON2_SALT_LENGTH,
 )
 
 # Password hasher setup
@@ -17,8 +17,10 @@ ph = PasswordHasher(
     salt_len=ARGON2_SALT_LENGTH,
 )
 
+
 def hash_password(password: str) -> str:
     return ph.hash(password)
+
 
 def verify_password(password: str, hashed_password: str) -> bool:
     try:

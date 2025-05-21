@@ -7,6 +7,7 @@ import time
 import random
 import re
 
+
 class LLMHandler:
     """Handles low-level LLM operations and data access"""
 
@@ -47,13 +48,12 @@ class LLMHandler:
                     )
                     time.sleep(wait_time)
                     continue
-                else:
-                    # Log technical details
-                    print(f"LLM API Error: {error_str}")
-                    # Wrap in domain-specific exception
-                    raise LLMAPIError(
-                        f"Failed to get completion from language model: {error_str}"
-                    ) from e
+                # Log technical details
+                print(f"LLM API Error: {error_str}")
+                # Wrap in domain-specific exception
+                raise LLMAPIError(
+                    f"Failed to get completion from language model: {error_str}"
+                ) from e
 
         # If we've exhausted all retries
         raise RateLimitError("Maximum retry attempts reached due to rate limiting")
@@ -93,13 +93,12 @@ class LLMHandler:
                     )
                     await asyncio.sleep(wait_time)
                     continue
-                else:
-                    # Log technical details
-                    print(f"Async LLM API Error: {error_str}")
-                    # Wrap in domain-specific exception
-                    raise LLMAPIError(
-                        f"Failed to get async completion from language model: {error_str}"
-                    ) from e
+                # Log technical details
+                print(f"Async LLM API Error: {error_str}")
+                # Wrap in domain-specific exception
+                raise LLMAPIError(
+                    f"Failed to get async completion from language model: {error_str}"
+                ) from e
 
         # If we've exhausted all retries
         raise RateLimitError("Maximum retry attempts reached due to rate limiting")

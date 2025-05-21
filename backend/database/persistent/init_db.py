@@ -4,16 +4,6 @@ Script to initialize the database
 
 from backend.database.persistent.config import engine
 from backend.database.persistent.models import Base
-from backend.database.persistent.models import (
-    User,
-    Case,
-    QuestionSet,
-    Question,
-    CaseDiscussion,
-    AnswerDiscussion,
-    Message,
-    UserAnswer,
-)
 
 
 def init_db():

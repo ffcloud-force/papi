@@ -20,7 +20,9 @@ if not JWT_SECRET_KEY:
     JWT_SECRET_KEY = generated_key
 
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 if get_environment() == Environment.PRODUCTION else 60 * 24
+ACCESS_TOKEN_EXPIRE_MINUTES = (
+    30 if get_environment() == Environment.PRODUCTION else 60 * 24
+)
 
 # Argon2 Settings
 if get_environment() == Environment.PRODUCTION:
@@ -32,4 +34,4 @@ else:
 
 ARGON2_PARALLELISM = 1
 ARGON2_HASH_LENGTH = 32
-ARGON2_SALT_LENGTH = 16 
+ARGON2_SALT_LENGTH = 16

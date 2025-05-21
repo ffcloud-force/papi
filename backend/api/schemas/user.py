@@ -35,8 +35,9 @@ class UserCreate(UserBase):
     confirm_password: str
 
     @field_validator("confirm_password")
-    def validate_confirm_password(cls, v, values):
-        if v != values.data["password"]:
+    def validate_confirm_password(cls, v, info):
+        password = info.data.get("password")
+        if password is not None and v != password:
             raise ValueError("Passwords do not match")
         return v
 

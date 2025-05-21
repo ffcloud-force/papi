@@ -20,3 +20,8 @@ packages = ["backend", "backend.modules", "backend.database", "backend.database.
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict" 
+
+[tool.ruff]
+
+[tool.ruff.lint]
+extend-select = ["N", "R"]

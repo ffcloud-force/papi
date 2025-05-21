@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    Column,
     String,
     Integer,
     DateTime,
@@ -149,18 +148,24 @@ class QuestionSet(Base):
     __tablename__ = "question_sets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    topic: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now()
     )
+    prompt_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )  # Store the version of the prompt that was used
 
     # Foreign Keys
     case_id: Mapped[str] = mapped_column(
         String, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False
     )
+    prompt_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("prompts.id", ondelete="NO ACTION"), nullable=False
+    )
 
     # Relationships
     case: Mapped["Case"] = relationship(back_populates="question_sets")
+    prompt: Mapped["Prompt"] = relationship("Prompt", back_populates="question_sets")
     questions: Mapped[list["Question"]] = relationship(
         back_populates="question_set", cascade="all, delete-orphan"
     )
@@ -179,8 +184,6 @@ class Question(Base):
     context: Mapped[str] = mapped_column(Text, nullable=True)
     difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
     _keywords: Mapped[str] = mapped_column("keywords", Text, nullable=False)
-    general_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    specific_type: Mapped[str] = mapped_column(String(50), nullable=True)
     llm_answer: Mapped[str] = mapped_column(
         Text, nullable=True
     )  # LLM_Answer is part of the Question Object
@@ -381,19 +384,74 @@ class UserAnswer(Base):
     )
 
 
+class PromptType(Enum):
+    INSTRUCTION = "instruction"
+    SIMPLE = "simple"
+    COMPLEX = "complex"
+
+
+class PromptSpecialization(Enum):
+    ALLGEMEIN = "allgemein"
+    TIEFENPSYCHOLOGIE = "tiefenpsychologie"
+    VERHALTENSTHERAPIE = "verhaltenstherapie"
+
+
+class PromptCategory(Enum):
+    RELATIONSHIPS = "relationships"
+    CONFLICT = "conflict"
+    STRUCTURE = "structure"
+
+
+class PromptSubCategory(Enum):
+    # Relationships subcategories
+    CORE_CONFLICTUAL_RELATIONSHIP_THEME = "core_conflictual_relationship_theme"
+    OBJECT_RELATIONS = "object_relations"
+    TRANSFERENCE_COUNTERTRANSFERENCE = "transference_countertransference"
+    ATTACHMENT_STYLES = "attachment_styles"
+
+    # Conflict subcategories
+    OPD_CONFLICT = "opd_conflict"
+    BASIC_CONFLICTS = "basic_conflicts"
+    UNCONSCIOUS_PROCESSES = "unconscious_processes"
+
+    # Structure subcategories
+    STRUCTURE_LEVEL = "structure_level"
+    STRUCTURAL_DEFICITS = "structural_deficits"
+    DEFENSE_MECHANISMS = "defense_mechanisms"
+    DEVELOPMENTAL_ASPECTS = "developmental_aspects"
+
+
 class Prompt(Base):
     __tablename__ = "prompts"
 
     id: Mapped[str] = mapped_column(
         String(64), primary_key=True
     )  # Example: "examiner_system_rules_v1", "user_task_generate_questions_cardiology"
+    type: Mapped[PromptType] = mapped_column(
+        SQLAlchemyEnum(PromptType, name="prompt_type_enum", create_type=False),
+        nullable=False,
+    )  # 'instruction', 'simple', 'complex'
     role: Mapped[MessageRole] = mapped_column(
         SQLAlchemyEnum(MessageRole, name="message_role_enum", create_type=False),
+        default=MessageRole.SYSTEM,
         nullable=False,
-    )  # 'system', 'user', or 'assistant'
-    specialization: Mapped[str] = mapped_column(
-        String(64), nullable=False
-    )  # Example: allgemein, klinisch, etc.
+    )  # 'all prompts are system prompts'
+    specialization: Mapped[PromptSpecialization] = mapped_column(
+        SQLAlchemyEnum(
+            PromptSpecialization, name="prompt_specialization_enum", create_type=False
+        ),
+        nullable=True,
+    )  # Example: tiefenpsychologie, verhaltenstherapie, etc.
+    category: Mapped[PromptCategory] = mapped_column(
+        SQLAlchemyEnum(PromptCategory, name="prompt_category_enum", create_type=False),
+        nullable=True,
+    )  # Example: relationship, conflict
+    sub_category: Mapped[PromptSubCategory] = mapped_column(
+        SQLAlchemyEnum(
+            PromptSubCategory, name="prompt_subcategory_enum", create_type=False
+        ),
+        nullable=True,
+    )  # Example: opd_conflict, core_conflictual_relationship_theme
     content: Mapped[str] = mapped_column(
         Text, nullable=False
     )  # The actual prompt text, possibly with placeholders
@@ -405,4 +463,9 @@ class Prompt(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now()
+    )
+
+    # Relationships
+    question_sets: Mapped[list["QuestionSet"]] = relationship(
+        "QuestionSet", back_populates="prompt"
     )
